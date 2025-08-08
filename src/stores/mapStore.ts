@@ -12,6 +12,11 @@ interface MapState {
   currentCalibrationLine: { startPoint: CalibrationPoint | null; endPoint: CalibrationPoint | null } | null;
   pixelsPerMeter: number;
   
+  // Grid settings
+  showGrid: boolean;
+  gridSpacing: number; // in meters
+  gridColor: string;
+  
   // Actions
   setScale: (scale: number) => void;
   setPosition: (position: { x: number; y: number }) => void;
@@ -23,6 +28,16 @@ interface MapState {
   completeCalibrationLine: (endPoint: CalibrationPoint, realWorldDistance: number) => void;
   clearCalibration: () => void;
   updatePixelsPerMeter: () => void;
+  
+  // Grid actions
+  toggleGrid: () => void;
+  setGridSpacing: (spacing: number) => void;
+  
+  // Zoom actions
+  zoomIn: () => void;
+  zoomOut: () => void;
+  zoomToFit: () => void;
+  resetZoom: () => void;
 }
 
 // Create the store
@@ -35,6 +50,11 @@ export const useMapStore = create<MapState>((set, get) => ({
   activeCalibrationLine: null,
   currentCalibrationLine: null,
   pixelsPerMeter: 1,
+  
+  // Grid settings
+  showGrid: true,
+  gridSpacing: 3, // 3 meters (approximately 10 feet)
+  gridColor: '#333333',
   
   // Implement actions
   setScale: (scale) => set({ scale }),
@@ -92,5 +112,15 @@ export const useMapStore = create<MapState>((set, get) => ({
     } else {
       set({ pixelsPerMeter: 1 });
     }
-  }
+  },
+  
+  // Grid actions
+  toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+  setGridSpacing: (spacing) => set({ gridSpacing: spacing }),
+  
+  // Zoom actions
+  zoomIn: () => set((state) => ({ scale: Math.min(5, state.scale * 1.2) })),
+  zoomOut: () => set((state) => ({ scale: Math.max(0.1, state.scale / 1.2) })),
+  zoomToFit: () => set({ scale: 1, position: { x: 0, y: 0 } }),
+  resetZoom: () => set({ scale: 1 })
 }));
