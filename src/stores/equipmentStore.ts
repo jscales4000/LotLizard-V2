@@ -1,100 +1,111 @@
 import { create } from 'zustand';
+import { EquipmentService, EquipmentTemplate } from '../services/equipmentService';
 
 // Define equipment item structure
 export interface EquipmentItem {
   id: string;
-  type: string;
   name: string;
-  width: number;
-  height: number;
   x: number;
   y: number;
+  width: number; // in pixels
+  height: number; // in pixels
   rotation: number;
   color: string;
-  properties: Record<string, any>;
+  type: string;
+  templateId: string;
+  realWorldWidth: number; // in meters
+  realWorldHeight: number; // in meters
+  minSpacing?: number; // in meters
 }
 
 // Define the state structure
 interface EquipmentState {
   items: EquipmentItem[];
   selectedId: string | null;
-  equipmentLibrary: {
-    id: string;
-    type: string;
-    name: string;
-    width: number;
-    height: number;
-    color: string;
-    properties: Record<string, any>;
-    thumbnail?: string;
-  }[];
+  equipmentLibrary: EquipmentTemplate[];
   
   // Actions
   addItem: (item: Omit<EquipmentItem, 'id'>) => void;
+  addItemFromTemplate: (templateId: string, x: number, y: number, pixelsPerMeter: number) => string | null;
   updateItem: (id: string, updates: Partial<EquipmentItem>) => void;
   removeItem: (id: string) => void;
   selectItem: (id: string | null) => void;
-  moveItem: (id: string, position: { x: number; y: number }) => void;
+  moveItem: (id: string, x: number, y: number) => void;
   rotateItem: (id: string, rotation: number) => void;
-  resizeItem: (id: string, dimensions: { width: number; height: number }) => void;
+  resizeItem: (id: string, width: number, height: number) => void;
+  updateItemDimensions: (pixelsPerMeter: number) => void;
+  clearAll: () => void;
 }
 
 // Create the store
-export const useEquipmentStore = create<EquipmentState>((set) => ({
+export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   items: [],
   selectedId: null,
-  equipmentLibrary: [
-    {
-      id: 'booth-small',
-      type: 'booth',
-      name: 'Small Booth',
-      width: 10,
-      height: 10,
-      color: '#8B4513',
-      properties: { capacity: 2 }
-    },
-    {
-      id: 'booth-medium',
-      type: 'booth',
-      name: 'Medium Booth',
-      width: 15,
-      height: 15,
-      color: '#8B4513',
-      properties: { capacity: 4 }
-    },
-    {
-      id: 'booth-large',
-      type: 'booth',
-      name: 'Large Booth',
-      width: 20,
-      height: 20,
-      color: '#8B4513',
-      properties: { capacity: 8 }
-    },
-    {
-      id: 'ride-small',
-      type: 'ride',
-      name: 'Small Ride',
-      width: 30,
-      height: 30,
-      color: '#FF6347',
-      properties: { capacity: 10, powerRequired: true }
-    },
-    {
-      id: 'ride-large',
-      type: 'ride',
-      name: 'Large Ride',
-      width: 50,
-      height: 50,
-      color: '#FF4500',
-      properties: { capacity: 30, powerRequired: true }
-    }
-  ],
+  equipmentLibrary: EquipmentService.getEquipmentTemplates(),
   
   // Implement actions
   addItem: (item) => set((state) => ({
     items: [...state.items, { ...item, id: `item-${Date.now()}` }]
   })),
+  
+  addItemFromTemplate: (templateId, x, y, pixelsPerMeter) => {
+    const template = EquipmentService.getEquipmentTemplate(templateId);
+    if (!template) return null;
+    
+    const pixelDimensions = EquipmentService.convertToPixelDimensions(
+      template.width,
+      template.height,
+      pixelsPerMeter
+    );
+    
+    const state = get();
+    
+    // Validate placement
+    const validation = EquipmentService.validatePlacement(
+      {
+        x,
+        y,
+        width: pixelDimensions.width,
+        height: pixelDimensions.height,
+        minSpacing: template.minSpacing
+      },
+      state.items.map(item => ({
+        x: item.x,
+        y: item.y,
+        width: item.width,
+        height: item.height,
+        minSpacing: item.minSpacing
+      })),
+      pixelsPerMeter
+    );
+    
+    if (!validation.valid) {
+      console.warn('Equipment placement validation failed:', validation.error);
+      return null;
+    }
+    
+    const newItem: EquipmentItem = {
+      id: `item-${Date.now()}`,
+      name: template.name,
+      x,
+      y,
+      width: pixelDimensions.width,
+      height: pixelDimensions.height,
+      rotation: 0,
+      color: template.color,
+      type: template.category,
+      templateId: template.id,
+      realWorldWidth: template.width,
+      realWorldHeight: template.height,
+      minSpacing: template.minSpacing
+    };
+    
+    set((state) => ({
+      items: [...state.items, newItem]
+    }));
+    
+    return newItem.id;
+  },
   updateItem: (id, updates) => set((state) => ({
     items: state.items.map(item => 
       item.id === id ? { ...item, ...updates } : item
@@ -105,9 +116,9 @@ export const useEquipmentStore = create<EquipmentState>((set) => ({
     selectedId: state.selectedId === id ? null : state.selectedId
   })),
   selectItem: (id) => set({ selectedId: id }),
-  moveItem: (id, position) => set((state) => ({
+  moveItem: (id, x, y) => set((state) => ({
     items: state.items.map(item =>
-      item.id === id ? { ...item, ...position } : item
+      item.id === id ? { ...item, x, y } : item
     )
   })),
   rotateItem: (id, rotation) => set((state) => ({
@@ -115,9 +126,25 @@ export const useEquipmentStore = create<EquipmentState>((set) => ({
       item.id === id ? { ...item, rotation } : item
     )
   })),
-  resizeItem: (id, dimensions) => set((state) => ({
-    items: state.items.map(item =>
-      item.id === id ? { ...item, ...dimensions } : item
+  resizeItem: (id, width, height) => set((state) => ({
+    items: state.items.map(item => 
+      item.id === id ? { ...item, width, height } : item
     )
   })),
+  
+  updateItemDimensions: (pixelsPerMeter) => set((state) => ({
+    items: state.items.map(item => {
+      const pixelDimensions = EquipmentService.convertToPixelDimensions(
+        item.realWorldWidth,
+        item.realWorldHeight,
+        pixelsPerMeter
+      );
+      return {
+        ...item,
+        width: pixelDimensions.width,
+        height: pixelDimensions.height
+      };
+    })
+  })),
+  clearAll: () => set({ items: [] })
 }));

@@ -28,14 +28,14 @@ const RightSidebar: React.FC = () => {
     setActiveTab(newValue);
   };
 
-  // Group equipment by type
-  const equipmentByType = equipmentLibrary.reduce((acc, item) => {
-    if (!acc[item.type]) {
-      acc[item.type] = [];
+  // Group equipment by category
+  const groupedEquipment = equipmentLibrary.reduce((acc: Record<string, any[]>, item: any) => {
+    if (!acc[item.category]) {
+      acc[item.category] = [];
     }
-    acc[item.type].push(item);
+    acc[item.category].push(item);
     return acc;
-  }, {} as Record<string, typeof equipmentLibrary>);
+  }, {} as Record<string, any[]>);
 
   return (
     <Drawer
@@ -66,8 +66,8 @@ const RightSidebar: React.FC = () => {
       
       {activeTab === 'equipment' && (
         <Box sx={{ overflow: 'auto', p: 1 }}>
-          {Object.entries(equipmentByType).map(([type, items]) => (
-            <Box key={type} sx={{ mb: 2 }}>
+          {Object.entries(groupedEquipment).map(([category, items]) => (
+            <Box key={category} sx={{ mb: 2 }}>
               <Typography 
                 variant="subtitle2" 
                 sx={{ 
@@ -78,19 +78,35 @@ const RightSidebar: React.FC = () => {
                   bgcolor: 'background.default'
                 }}
               >
-                {type}
+                {category}
               </Typography>
               <List dense disablePadding>
-                {items.map((item) => (
+                {(items as any[]).map((item: any) => (
                   <ListItem key={item.id} disablePadding>
                     <ListItemButton
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/json', JSON.stringify({
+                          type: 'equipment',
+                          templateId: item.id,
+                          name: item.name,
+                          category: item.category,
+                          width: item.width,
+                          height: item.height,
+                          color: item.color
+                        }));
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
                       sx={{ 
                         display: 'flex', 
                         alignItems: 'center',
                         borderLeft: `4px solid ${item.color}`,
-                        pl: 1
+                        pl: 1,
+                        cursor: 'grab',
+                        '&:active': {
+                          cursor: 'grabbing'
+                        }
                       }}
-                      onClick={() => console.log(`Add ${item.name}`)}
                     >
                       <Box
                         sx={{
@@ -187,24 +203,42 @@ const RightSidebar: React.FC = () => {
                 Properties
               </Typography>
               
-              {Object.entries(selectedItem.properties).length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No additional properties
-                </Typography>
-              ) : (
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  {Object.entries(selectedItem.properties).map(([key, value]) => (
-                    <Box key={key}>
-                      <Typography variant="caption" display="block" color="text.secondary">
-                        {key}
-                      </Typography>
-                      <Typography variant="body2">
-                        {value.toString()}
-                      </Typography>
-                    </Box>
-                  ))}
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                <Box>
+                  <Typography variant="caption" display="block" color="text.secondary">
+                    Real Size
+                  </Typography>
+                  <Typography variant="body2">
+                    {selectedItem.realWorldWidth.toFixed(1)}×{selectedItem.realWorldHeight.toFixed(1)} m
+                  </Typography>
                 </Box>
-              )}
+                <Box>
+                  <Typography variant="caption" display="block" color="text.secondary">
+                    Pixel Size
+                  </Typography>
+                  <Typography variant="body2">
+                    {Math.round(selectedItem.width)}×{Math.round(selectedItem.height)} px
+                  </Typography>
+                </Box>
+                {selectedItem.minSpacing && (
+                  <Box>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      Min Spacing
+                    </Typography>
+                    <Typography variant="body2">
+                      {selectedItem.minSpacing} m
+                    </Typography>
+                  </Box>
+                )}
+                <Box>
+                  <Typography variant="caption" display="block" color="text.secondary">
+                    Position
+                  </Typography>
+                  <Typography variant="body2">
+                    {Math.round(selectedItem.x)}, {Math.round(selectedItem.y)}
+                  </Typography>
+                </Box>
+              </Box>
             </Paper>
           )}
         </Box>

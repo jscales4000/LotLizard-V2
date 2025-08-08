@@ -1,19 +1,33 @@
 import React from 'react';
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, Tooltip } from '@mui/material';
+import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, Divider, Tooltip } from '@mui/material';
 import PanToolIcon from '@mui/icons-material/PanTool';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CropIcon from '@mui/icons-material/Crop';
+import { useMapStore } from '../../stores/mapStore';
 
 // Set width for the left sidebar
 const DRAWER_WIDTH = 60;
 
 const LeftSidebar: React.FC = () => {
   const [selectedTool, setSelectedTool] = React.useState<string>('select');
+  const { isCalibrationMode, toggleCalibrationMode } = useMapStore();
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
+    
+    // Handle calibration tool
+    if (tool === 'calibrate') {
+      if (!isCalibrationMode) {
+        toggleCalibrationMode();
+      }
+    } else {
+      // If switching to another tool, exit calibration mode
+      if (isCalibrationMode) {
+        toggleCalibrationMode();
+      }
+    }
   };
 
   return (
@@ -59,16 +73,17 @@ const LeftSidebar: React.FC = () => {
           <Tooltip title="Calibration Tool" placement="right" arrow>
             <ListItem disablePadding>
               <ListItemButton 
-                selected={selectedTool === 'calibrate'}
+                selected={selectedTool === 'calibrate' || isCalibrationMode}
                 onClick={() => handleToolSelect('calibrate')}
                 sx={{ 
                   justifyContent: 'center',
                   minHeight: 48,
-                  px: 1
+                  px: 1,
+                  bgcolor: isCalibrationMode ? 'rgba(255, 193, 7, 0.2)' : 'transparent'
                 }}
               >
                 <ListItemIcon sx={{ minWidth: 0 }}>
-                  <SquareFootIcon />
+                  <SquareFootIcon color={isCalibrationMode ? 'warning' : 'inherit'} />
                 </ListItemIcon>
               </ListItemButton>
             </ListItem>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AppBar, Toolbar, Typography, IconButton, Box, Button } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
@@ -6,9 +6,11 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import ImageSearchIcon from '@mui/icons-material/ImageSearch';
 import { useMapStore } from '../../stores/mapStore';
+import ImageImportDialog from '../common/ImageImportDialog';
 
 const TopBar: React.FC = () => {
   const { scale, setScale } = useMapStore();
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const handleZoomIn = () => {
     setScale(scale * 1.2);
@@ -19,8 +21,11 @@ const TopBar: React.FC = () => {
   };
 
   const handleImportImage = () => {
-    // Image import functionality will be implemented later
-    console.log('Import image clicked');
+    setImportDialogOpen(true);
+  };
+
+  const handleCloseImportDialog = () => {
+    setImportDialogOpen(false);
   };
 
   return (
@@ -75,6 +80,12 @@ const TopBar: React.FC = () => {
           </IconButton>
         </Box>
       </Toolbar>
+      
+      {/* Image Import Dialog */}
+      <ImageImportDialog 
+        open={importDialogOpen} 
+        onClose={handleCloseImportDialog} 
+      />
     </AppBar>
   );
 };

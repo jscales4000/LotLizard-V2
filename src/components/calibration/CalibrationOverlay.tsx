@@ -20,6 +20,7 @@ const CalibrationOverlay: React.FC = () => {
       
       // Add calibration point with a placeholder real world distance (to be updated via UI)
       addCalibrationPoint({
+        id: `point-${Date.now()}`,
         x: adjustedPoint.x,
         y: adjustedPoint.y,
         realWorldDistance: 0 // Will be updated via input field
