@@ -95,4 +95,5 @@ _Coming soon: License information_
 - Description of changes
 - Add Ctrl+mouse wheel for equipment rotation - Add settings toggle for equipment label visibility - Add 1s hover popup to show equipment names when labels are hidden
 - Resolves 'maps.Geocoder is not a constructor' error by using global google object - Improves error handling and adds detailed logging - Updates Project Log with version 0.1.4 details
+
 - to-screen and fixed keyboard handler

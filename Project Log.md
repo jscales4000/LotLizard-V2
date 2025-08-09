@@ -1,5 +1,10 @@
 # Project Log - LotLizard V2
 
+## Version 0.2.3 - 2025-08-09
+
+Update multiple components (v0.2.3) - Automated commit
+
+
 ## Version 0.2.2 - 2025-08-09
 
 Update multiple components (v0.2.2) - Automated commit

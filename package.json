@@ -29,7 +29,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "commit": "powershell -File ./git-commit.ps1 -Auto"
   },
   "eslintConfig": {
     "extends": [
