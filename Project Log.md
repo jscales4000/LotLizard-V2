@@ -1,5 +1,29 @@
 # Project Log - LotLizard V2
 
+## Version 0.1.2 (August 8, 2025)
+
+### Advanced Keyboard Shortcuts & Selection Management
+
+#### Changes:
+- **Implemented Multi-Select**: Added Ctrl+Click functionality to select multiple equipment items
+- **Copy/Paste Support**: Implemented Ctrl+C and Ctrl+V to copy and paste selected equipment
+- **Select All**: Added Ctrl+A to select all equipment items on canvas
+- **Delete Functionality**: Implemented Delete key to remove selected equipment
+- **Zoom Shortcuts**: Added Ctrl++ and Ctrl+- for zooming in and out
+- **Deselect Function**: Clicking on empty canvas space now deselects all items
+
+#### Technical Details:
+- Updated the keyboard event handler in MapCanvas.tsx to support all keyboard shortcuts
+- Integrated clipboard functionality in the equipmentStore for copy/paste operations
+- Fixed component structure issues and TypeScript errors in MapCanvas.tsx
+- Implemented proper event bubbling for click detection on empty canvas areas
+
+#### Benefits:
+- Significantly improved productivity with keyboard-driven workflows
+- Enhanced selection management with intuitive controls
+- Better user experience matching standard application conventions
+- Streamlined equipment manipulation with multi-select capabilities
+
 ## Version 0.1.1 (August 8, 2025)
 
 ### Enhanced Fit-to-Screen Functionality

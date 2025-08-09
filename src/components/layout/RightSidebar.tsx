@@ -20,9 +20,10 @@ const DRAWER_WIDTH = 280;
 const RightSidebar: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'equipment' | 'properties'>('equipment');
   const equipmentLibrary = useEquipmentStore(state => state.equipmentLibrary);
-  const selectedId = useEquipmentStore(state => state.selectedId);
+  const selectedIds = useEquipmentStore(state => state.selectedIds);
   const items = useEquipmentStore(state => state.items);
-  const selectedItem = items.find(item => item.id === selectedId);
+  // Get the first selected item for properties display
+  const selectedItem = selectedIds.length > 0 ? items.find(item => item.id === selectedIds[0]) : undefined;
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: 'equipment' | 'properties') => {
     setActiveTab(newValue);

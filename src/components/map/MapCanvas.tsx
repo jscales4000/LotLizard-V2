@@ -29,7 +29,22 @@ const MapCanvas: React.FC = () => {
     gridColor
   } = useMapStore();
   
-  const { addItemFromTemplate, items: equipmentItems, selectItem, selectedId, moveItem, updateItemDimensions } = useEquipmentStore();
+  const { 
+    addItemFromTemplate, 
+    items: equipmentItems, 
+    selectItem, 
+    selectMultiple,
+    selectAll,
+    deselectAll,
+    moveItem,
+    moveSelectedItems, 
+    removeSelectedItems,
+    updateItemDimensions,
+    copySelectedItems,
+    pasteItems,
+    isSelected,
+    getSelectedItems
+  } = useEquipmentStore();
 
   // Local state
   const [calibrationDialogOpen, setCalibrationDialogOpen] = useState(false);
@@ -120,10 +135,19 @@ const MapCanvas: React.FC = () => {
       }
     } else {
       const clickedEquipment = getEquipmentAtPoint(x, y);
+      
       if (clickedEquipment) {
-        selectItem(clickedEquipment.id);
+        // If Ctrl key is pressed, add/remove from selection
+        if (event.ctrlKey) {
+          selectMultiple(clickedEquipment.id, true);
+        } else {
+          // Otherwise replace selection
+          selectItem(clickedEquipment.id);
+        }
       } else {
-        selectItem(null);
+        // Always deselect when clicking on empty canvas area
+        // This is important for UX, especially after using Ctrl+A
+        deselectAll();
       }
     }
   };
@@ -135,14 +159,21 @@ const MapCanvas: React.FC = () => {
     const clickedEquipment = getEquipmentAtPoint(x, y);
     
     if (clickedEquipment) {
-      selectItem(clickedEquipment.id);
       setIsDraggingEquipment(true);
+      
+      // If Ctrl is pressed, add to selection without changing existing selection
+      if (event.ctrlKey) {
+        selectMultiple(clickedEquipment.id, true);
+      } else if (!isSelected(clickedEquipment.id)) {
+        // If not already selected and not using Ctrl, select only this one
+        selectItem(clickedEquipment.id);
+      }
+      
       setDragOffset({
         x: x - clickedEquipment.x,
         y: y - clickedEquipment.y
       });
-    } else if (!imageLocked || !imageUrl) {
-      // Canvas panning (only if image is not locked or no image loaded)
+    } else {
       setIsPanning(true);
       setPanStart({ x: event.clientX, y: event.clientY });
       setPanStartPosition({ x: position.x, y: position.y });
@@ -150,9 +181,21 @@ const MapCanvas: React.FC = () => {
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isDraggingEquipment && selectedId) {
+    if (isCalibrationMode) return;
+    
+    if (isDraggingEquipment) {
       const { x, y } = getCanvasCoordinates(event);
-      moveItem(selectedId, x - dragOffset.x, y - dragOffset.y);
+      const selectedItems = getSelectedItems();
+      
+      // Only move the item directly being dragged
+      if (selectedItems.length === 1) {
+        moveItem(selectedItems[0].id, x - dragOffset.x, y - dragOffset.y);
+      } else if (selectedItems.length > 1) {
+        // Move all selected items as a group
+        const deltaX = x - (selectedItems[0].x + dragOffset.x);
+        const deltaY = y - (selectedItems[0].y + dragOffset.y);
+        moveSelectedItems(deltaX, deltaY);
+      }
     } else if (isPanning) {
       const deltaX = event.clientX - panStart.x;
       const deltaY = event.clientY - panStart.y;
@@ -285,16 +328,16 @@ const MapCanvas: React.FC = () => {
   }, [currentCalibrationLine]);
 
   const drawEquipmentItems = React.useCallback((ctx: CanvasRenderingContext2D) => {
-    equipmentItems.forEach((item) => {
-      ctx.fillStyle = item.color;
-      ctx.globalAlpha = 0.7;
-      ctx.fillRect(item.x, item.y, item.width, item.height);
+    equipmentItems.forEach(item => {
+      const selected = isSelected(item.id);
+      ctx.fillStyle = selected ? '#ffff00' : item.color;
+      ctx.strokeStyle = selected ? '#ff0000' : '#000000';
+      ctx.lineWidth = selected ? 2 : 1;
       
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = selectedId === item.id ? '#ffffff' : item.color;
-      ctx.lineWidth = selectedId === item.id ? 3 : 2;
-      ctx.setLineDash(selectedId === item.id ? [5, 5] : []);
-      ctx.strokeRect(item.x, item.y, item.width, item.height);
+      ctx.beginPath();
+      ctx.rect(item.x, item.y, item.width, item.height);
+      ctx.fill();
+      ctx.stroke();
       
       ctx.fillStyle = '#ffffff';
       ctx.font = '12px Arial';
@@ -305,7 +348,7 @@ const MapCanvas: React.FC = () => {
         item.y + item.height / 2
       );
     });
-  }, [equipmentItems, selectedId]);
+  }, [equipmentItems, isSelected]);
 
   const drawGrid = React.useCallback((ctx: CanvasRenderingContext2D) => {
     if (!showGrid || pixelsPerMeter <= 0) return;
@@ -407,48 +450,92 @@ const MapCanvas: React.FC = () => {
     };
   }, [scale, position, setScale, setPosition, imageLocked, imageUrl]);
 
-  // Add keyboard handler for equipment movement
+  // Add keyboard handler for equipment movement and shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (imageLocked) return;
       
       // Escape key to deselect
       if (event.key === 'Escape') {
-        selectItem(null);
+        deselectAll();
         return;
       }
       
       // Delete key to remove selected equipment
       if (event.key === 'Delete' || event.key === 'Backspace') {
-        if (selectedId) {
-          useEquipmentStore.getState().removeItem(selectedId);
+        removeSelectedItems();
+        return;
+      }
+      
+      // Ctrl+A to select all
+      if (event.key.toLowerCase() === 'a' && event.ctrlKey) {
+        event.preventDefault();
+        selectAll();
+        return;
+      }
+      
+      // Ctrl+C to copy
+      if (event.key.toLowerCase() === 'c' && event.ctrlKey) {
+        event.preventDefault();
+        copySelectedItems();
+        return;
+      }
+      
+      // Ctrl+V to paste
+      if (event.key.toLowerCase() === 'v' && event.ctrlKey) {
+        event.preventDefault();
+        
+        // Calculate center of view as paste position
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const centerX = (canvas.width / 2 - position.x) / scale;
+          const centerY = (canvas.height / 2 - position.y) / scale;
+          pasteItems(centerX, centerY);
+        } else {
+          pasteItems(); // Use default position
         }
         return;
       }
       
+      // Ctrl+Plus/Equal to zoom in
+      if ((event.key === '+' || event.key === '=') && event.ctrlKey) {
+        event.preventDefault();
+        // Use current scale and calculate new scale directly
+        const newScale = Math.min(5, scale * 1.1); // Zoom in 10%, max 500%
+        setScale(newScale);
+        return;
+      }
+      
+      // Ctrl+Minus to zoom out
+      if (event.key === '-' && event.ctrlKey) {
+        event.preventDefault();
+        // Use current scale and calculate new scale directly
+        const newScale = Math.max(0.1, scale / 1.1); // Zoom out 10%, min 10%
+        setScale(newScale);
+        return;
+      }
+      
       // Arrow keys for fine movement of selected equipment
-      if (selectedId) {
-        const item = equipmentItems.find(i => i.id === selectedId);
-        if (!item) return;
-        
+      const selectedItems = getSelectedItems();
+      if (selectedItems.length > 0) {
         const moveDistance = event.shiftKey ? 10 : 1; // Fine/coarse adjustment
         
         switch (event.key) {
           case 'ArrowLeft':
             event.preventDefault();
-            moveItem(selectedId, item.x - moveDistance, item.y);
+            moveSelectedItems(-moveDistance, 0);
             break;
           case 'ArrowRight':
             event.preventDefault();
-            moveItem(selectedId, item.x + moveDistance, item.y);
+            moveSelectedItems(moveDistance, 0);
             break;
           case 'ArrowUp':
             event.preventDefault();
-            moveItem(selectedId, item.x, item.y - moveDistance);
+            moveSelectedItems(0, -moveDistance);
             break;
           case 'ArrowDown':
             event.preventDefault();
-            moveItem(selectedId, item.x, item.y + moveDistance);
+            moveSelectedItems(0, moveDistance);
             break;
         }
       }
@@ -460,7 +547,7 @@ const MapCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedId, equipmentItems, imageLocked, selectItem, moveItem]);
+  }, [equipmentItems, imageLocked, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems]);
 
   return (
     <Box 

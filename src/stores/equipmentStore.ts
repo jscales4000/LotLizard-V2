@@ -21,7 +21,8 @@ export interface EquipmentItem {
 // Define the state structure
 interface EquipmentState {
   items: EquipmentItem[];
-  selectedId: string | null;
+  selectedIds: string[];
+  clipboardItems: EquipmentItem[];
   equipmentLibrary: EquipmentTemplate[];
   
   // Actions
@@ -29,18 +30,30 @@ interface EquipmentState {
   addItemFromTemplate: (templateId: string, x: number, y: number, pixelsPerMeter: number) => string | null;
   updateItem: (id: string, updates: Partial<EquipmentItem>) => void;
   removeItem: (id: string) => void;
+  removeSelectedItems: () => void;
   selectItem: (id: string | null) => void;
+  selectMultiple: (id: string, append: boolean) => void;
+  selectAll: () => void;
+  deselectAll: () => void;
   moveItem: (id: string, x: number, y: number) => void;
+  moveSelectedItems: (deltaX: number, deltaY: number) => void;
   rotateItem: (id: string, rotation: number) => void;
   resizeItem: (id: string, width: number, height: number) => void;
   updateItemDimensions: (pixelsPerMeter: number) => void;
+  copySelectedItems: () => void;
+  pasteItems: (x?: number, y?: number) => void;
   clearAll: () => void;
+  
+  // Helpers
+  getSelectedItems: () => EquipmentItem[];
+  isSelected: (id: string) => boolean;
 }
 
 // Create the store
 export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   items: [],
-  selectedId: null,
+  selectedIds: [],
+  clipboardItems: [],
   equipmentLibrary: EquipmentService.getEquipmentTemplates(),
   
   // Implement actions
@@ -113,12 +126,48 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   })),
   removeItem: (id) => set((state) => ({
     items: state.items.filter(item => item.id !== id),
-    selectedId: state.selectedId === id ? null : state.selectedId
+    selectedIds: state.selectedIds.filter(selectedId => selectedId !== id)
   })),
-  selectItem: (id) => set({ selectedId: id }),
+  
+  removeSelectedItems: () => set((state) => ({
+    items: state.items.filter(item => !state.selectedIds.includes(item.id)),
+    selectedIds: []
+  })),
+  
+  selectItem: (id) => set({ selectedIds: id ? [id] : [] }),
+  
+  selectMultiple: (id, append) => set((state) => {
+    if (!id) return { selectedIds: [] };
+    
+    if (append) {
+      // If already selected, deselect it
+      if (state.selectedIds.includes(id)) {
+        return { selectedIds: state.selectedIds.filter(selectedId => selectedId !== id) };
+      }
+      // Otherwise, add to selection
+      return { selectedIds: [...state.selectedIds, id] };
+    } else {
+      // Replace selection
+      return { selectedIds: [id] };
+    }
+  }),
+  
+  selectAll: () => set((state) => ({
+    selectedIds: state.items.map(item => item.id)
+  })),
+  
+  deselectAll: () => set({ selectedIds: [] }),
   moveItem: (id, x, y) => set((state) => ({
     items: state.items.map(item =>
       item.id === id ? { ...item, x, y } : item
+    )
+  })),
+  
+  moveSelectedItems: (deltaX, deltaY) => set((state) => ({
+    items: state.items.map(item => 
+      state.selectedIds.includes(item.id) 
+        ? { ...item, x: item.x + deltaX, y: item.y + deltaY } 
+        : item
     )
   })),
   rotateItem: (id, rotation) => set((state) => ({
@@ -146,5 +195,63 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
       };
     })
   })),
-  clearAll: () => set({ items: [] })
+  clearAll: () => set({ items: [], selectedIds: [], clipboardItems: [] }),
+  
+  copySelectedItems: () => {
+    const state = get();
+    const selectedItems = state.items.filter(item => state.selectedIds.includes(item.id));
+    set({ clipboardItems: JSON.parse(JSON.stringify(selectedItems)) });
+  },
+  
+  pasteItems: (x, y) => {
+    const state = get();
+    if (state.clipboardItems.length === 0) return;
+    
+    // Default paste location is center of current view if not specified
+    const pasteX = x !== undefined ? x : 400; // Default x if not specified
+    const pasteY = y !== undefined ? y : 300; // Default y if not specified
+    
+    // Calculate the center of the copied items
+    const bounds = state.clipboardItems.reduce(
+      (acc, item) => ({
+        minX: Math.min(acc.minX, item.x),
+        minY: Math.min(acc.minY, item.y),
+        maxX: Math.max(acc.maxX, item.x + item.width),
+        maxY: Math.max(acc.maxY, item.y + item.height)
+      }),
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+    );
+    
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    
+    // Calculate offset from original center to new paste location
+    const offsetX = pasteX - centerX;
+    const offsetY = pasteY - centerY;
+    
+    // Create new items with offset and new IDs
+    const newItems = state.clipboardItems.map(item => ({
+      ...item,
+      id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      x: item.x + offsetX,
+      y: item.y + offsetY
+    }));
+    
+    const newIds = newItems.map(item => item.id);
+    
+    set(state => ({
+      items: [...state.items, ...newItems],
+      selectedIds: newIds
+    }));
+  },
+  
+  // Helper methods
+  getSelectedItems: () => {
+    const state = get();
+    return state.items.filter(item => state.selectedIds.includes(item.id));
+  },
+  
+  isSelected: (id) => {
+    return get().selectedIds.includes(id);
+  }
 }));
