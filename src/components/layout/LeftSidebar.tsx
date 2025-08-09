@@ -11,6 +11,7 @@ import {
   IconButton
 } from '@mui/material';
 import PanToolIcon from '@mui/icons-material/PanTool';
+import OpenWithIcon from '@mui/icons-material/OpenWith';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
@@ -47,6 +48,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   settingsDrawerOpen
 }) => {
   const [selectedTool, setSelectedTool] = React.useState<string>('select');
+  const [isPanningModeActive, setIsPanningModeActive] = React.useState<boolean>(false);
   
   const { 
     isCalibrationMode, 
@@ -56,7 +58,8 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     zoomIn,
     zoomOut,
     zoomToFit,
-    scale
+    scale,
+    setIsPanningMode
   } = useMapStore();
 
   const handleToolSelect = (tool: string) => {
@@ -67,6 +70,10 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
       if (isCalibrationMode) {
         toggleCalibrationMode();
       }
+      if (tool === 'pan') {
+        setIsPanningMode(false);
+        setIsPanningModeActive(false);
+      }
     } else {
       // Select the new tool and deselect others
       setSelectedTool(tool);
@@ -76,10 +83,28 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
         if (!isCalibrationMode) {
           toggleCalibrationMode();
         }
-      } else {
-        // If switching to another tool, exit calibration mode
+        // Ensure panning mode is off when calibrating
+        setIsPanningMode(false);
+        setIsPanningModeActive(false);
+      } 
+      // Handle pan/move tool
+      else if (tool === 'pan') {
+        // Enable panning mode
+        setIsPanningMode(true);
+        setIsPanningModeActive(true);
+        // Ensure calibration mode is off when panning
         if (isCalibrationMode) {
           toggleCalibrationMode();
+        }
+      } 
+      else {
+        // If switching to another tool, exit calibration mode and panning mode
+        if (isCalibrationMode) {
+          toggleCalibrationMode();
+        }
+        if (isPanningModeActive) {
+          setIsPanningMode(false);
+          setIsPanningModeActive(false);
         }
       }
     }
@@ -217,10 +242,29 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </ListItem>
           </Tooltip>
           
-          <Tooltip title="Calibration Tool" placement="right" arrow>
+          <Tooltip title="Move Canvas" placement="right" arrow>
             <ListItem disablePadding>
               <ListItemButton 
-                selected={selectedTool === 'calibrate' || isCalibrationMode}
+                selected={selectedTool === 'pan'}
+                onClick={() => handleToolSelect('pan')}
+                sx={{ 
+                  justifyContent: 'center',
+                  minHeight: 48,
+                  px: 1,
+                  bgcolor: isPanningModeActive ? 'rgba(33, 150, 243, 0.2)' : 'transparent'
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}>
+                  <OpenWithIcon color={isPanningModeActive ? 'primary' : 'inherit'} />
+                </ListItemIcon>
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
+          
+          <Tooltip title="Calibrate Scale" placement="right" arrow>
+            <ListItem disablePadding>
+              <ListItemButton 
+                selected={selectedTool === 'calibrate'}
                 onClick={() => handleToolSelect('calibrate')}
                 sx={{ 
                   justifyContent: 'center',

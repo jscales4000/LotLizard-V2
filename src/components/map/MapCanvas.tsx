@@ -14,16 +14,16 @@ const MapCanvas: React.FC = () => {
   const { 
     scale, 
     position, 
-    imageUrl,
-    imageLocked,
+    setPosition, 
+    imageUrl, 
     isCalibrationMode,
+    isPanningMode,
     activeCalibrationLine,
     currentCalibrationLine,
     startCalibrationLine,
     completeCalibrationLine,
     pixelsPerMeter,
     setScale,
-    setPosition,
     showGrid,
     showCalibrationLine,
     gridSpacing,
@@ -218,8 +218,17 @@ const MapCanvas: React.FC = () => {
     
     const { x, y } = getCanvasCoordinates(event);
     
-    if (event.button === 1 || (event.button === 0 && event.altKey)) {
-      // Middle mouse button or Alt+Left click for panning
+    // Enable panning if either:
+    // 1. User clicked the pan tool button (isPanningMode is true)
+    // 2. User is using middle mouse button
+    // 3. User is using Alt+Left click
+    if (isPanningMode || event.button === 1 || (event.button === 0 && event.altKey)) {
+      // Set cursor to grabbing
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.style.cursor = 'grabbing';
+      }
+      
       setIsPanning(true);
       setPanStart({ x: event.clientX, y: event.clientY });
       setPanStartPosition({ x: position.x, y: position.y });
@@ -260,10 +269,45 @@ const MapCanvas: React.FC = () => {
     }
   };
 
+  const handleMouseUp = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isCalibrationMode) {
+      // Handle calibration point creation here...
+      // We're already handling this with click events, so we can leave this empty
+    } else {
+      if (isPanning) {
+        setIsPanning(false);
+        // Reset cursor when panning ends
+        const canvas = canvasRef.current;
+        if (canvas) {
+          if (isPanningMode) {
+            canvas.style.cursor = 'grab'; // Show grab cursor when in pan mode
+          } else {
+            canvas.style.cursor = 'default'; // Reset to default when not in pan mode
+          }
+        }
+      }
+      if (isDraggingEquipment) {
+        setIsDraggingEquipment(false);
+      }
+      if (isRotatingEquipment) {
+        setIsRotatingEquipment(false);
+        setRotationItem(null);
+      }
+    }
+  };
+
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isCalibrationMode) return;
     
     const { x, y } = getCanvasCoordinates(event);
+    
+    // Update cursor for pan mode when not actively panning
+    if (isPanningMode && !isPanning) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.style.cursor = 'grab'; // Show grab cursor when in pan mode
+      }
+    }
     
     // Handle hover popup logic when equipment labels are hidden
     if (!showEquipmentLabels && !isPanning && !isDraggingEquipment && !isRotatingEquipment) {
@@ -309,10 +353,14 @@ const MapCanvas: React.FC = () => {
         canvas.style.cursor = 'grab';
       }
     } else if (!isPanning && !isDraggingEquipment && !isRotatingEquipment) {
-      // Reset cursor if not over anything special
+      // Set appropriate cursor based on mode
       const canvas = canvasRef.current;
       if (canvas) {
-        canvas.style.cursor = 'default';
+        if (isPanningMode) {
+          canvas.style.cursor = 'grab';
+        } else {
+          canvas.style.cursor = 'default';
+        }
       }
     }
     
@@ -378,7 +426,7 @@ const MapCanvas: React.FC = () => {
       return;
     }
     
-    if (isDraggingEquipment && !imageLocked) {
+    if (isDraggingEquipment) {
       const selectedItems = getSelectedItems();
       if (selectedItems.length === 1) {
         // Single item movement
@@ -391,14 +439,6 @@ const MapCanvas: React.FC = () => {
         moveSelectedItems(deltaX, deltaY);
       }
     }
-  };
-
-  const handleMouseUp = () => {
-    setIsDraggingEquipment(false);
-    setDragOffset({ x: 0, y: 0 });
-    setIsPanning(false);
-    setIsRotatingEquipment(false);
-    setRotationItem(null); // Reset rotation item to allow future rotations
   };
 
   const handleDragOver = (event: React.DragEvent<HTMLCanvasElement>) => {
@@ -701,7 +741,7 @@ const MapCanvas: React.FC = () => {
       
       // Normal zoom behavior if Ctrl isn't pressed or no items selected
       // Prevent zooming if image is locked
-      if (imageLocked && imageUrl) {
+      if (imageUrl) {
         return;
       }
       
@@ -727,15 +767,23 @@ const MapCanvas: React.FC = () => {
     return () => {
       canvas.removeEventListener('wheel', wheelHandler);
     };
-  }, [scale, position, setScale, setPosition, imageLocked, imageUrl, getSelectedItems, rotateItem]);
+  }, [scale, position, setScale, setPosition, imageUrl, getSelectedItems, rotateItem]);
 
   // Add keyboard handler for equipment movement and shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (imageLocked) return;
+      // No lock check needed - always allow keyboard interactions
       
-      // Escape key to deselect
+      // Escape key to deselect and exit panning mode
       if (event.key === 'Escape') {
+        // Allow escape key to exit panning mode
+        if (isPanningMode) {
+          useMapStore.getState().setIsPanningMode(false);
+          const canvas = canvasRef.current;
+          if (canvas) {
+            canvas.style.cursor = 'default';
+          }
+        }
         deselectAll();
         return;
       }
@@ -826,7 +874,7 @@ const MapCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [equipmentItems, imageLocked, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems]);
+  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode]);
 
   return (
     <Box 
@@ -915,7 +963,7 @@ const MapCanvas: React.FC = () => {
           }}
         >
           Image loaded • Scale: {Math.round(scale * 100)}%
-          {imageLocked && (
+          {false && (
             <Box sx={{ mt: 0.5, color: 'warning.main' }}>
               🔒 Image Locked
             </Box>

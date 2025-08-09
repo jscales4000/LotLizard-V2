@@ -6,8 +6,9 @@ interface MapState {
   scale: number;
   position: { x: number; y: number };
   imageUrl: string | null;
-  imageLocked: boolean;
+
   isCalibrationMode: boolean;
+  isPanningMode: boolean; // Added state for pan/move tool mode
   calibrationPoints: CalibrationPoint[];
   activeCalibrationLine: CalibrationLine | null;
   currentCalibrationLine: { startPoint: CalibrationPoint | null; endPoint: CalibrationPoint | null } | null;
@@ -28,7 +29,7 @@ interface MapState {
   setScale: (scale: number) => void;
   setPosition: (position: { x: number; y: number }) => void;
   setImageUrl: (url: string | null) => void;
-  setImageLocked: (locked: boolean) => void;
+
   setPixelsPerMeter: (pixelsPerMeter: number) => void;
   toggleCalibrationMode: () => void;
   addCalibrationPoint: (point: CalibrationPoint) => void;
@@ -46,6 +47,9 @@ interface MapState {
   // Equipment display actions
   toggleEquipmentLabels: () => void;
   
+  // Pan/move actions
+  setIsPanningMode: (isPanning: boolean) => void;
+  
   // Zoom actions
   zoomIn: () => void;
   zoomOut: () => void;
@@ -58,8 +62,9 @@ export const useMapStore = create<MapState>((set, get) => ({
   scale: 1.0,
   position: { x: 0, y: 0 },
   imageUrl: null,
-  imageLocked: false,
+
   isCalibrationMode: false,
+  isPanningMode: false,
   calibrationPoints: [],
   activeCalibrationLine: null,
   currentCalibrationLine: null,
@@ -80,7 +85,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   setScale: (scale) => set({ scale }),
   setPosition: (position) => set({ position }),
   setImageUrl: (imageUrl) => set({ imageUrl }),
-  setImageLocked: (imageLocked) => set({ imageLocked }),
+
   setPixelsPerMeter: (pixelsPerMeter) => set({ pixelsPerMeter }),
   toggleCalibrationMode: () => set((state) => ({ 
     isCalibrationMode: !state.isCalibrationMode,
@@ -143,6 +148,9 @@ export const useMapStore = create<MapState>((set, get) => ({
   
   // Equipment display actions
   toggleEquipmentLabels: () => set((state) => ({ showEquipmentLabels: !state.showEquipmentLabels })),
+  
+  // Pan/move actions
+  setIsPanningMode: (isPanning) => set({ isPanningMode: isPanning }),
   
   // Zoom actions
   zoomIn: () => set((state) => ({ scale: Math.min(5, state.scale * 1.2) })),

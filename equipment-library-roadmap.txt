@@ -1,0 +1,104 @@
+# LotLizard V2 Equipment Library Feature Roadmap
+
+## Feature Overview
+
+The equipment library is a core component of LotLizard V2 that allows users to place, manage, and customize various equipment items on the event layout canvas. The library serves as a centralized repository of equipment templates that can be dragged onto the canvas, positioned precisely, rotated as needed, and labeled appropriately to create accurate event layouts.
+
+### Current Equipment Library Functionality:
+- Basic equipment templates with predefined dimensions
+- Drag and drop placement onto the canvas
+- Manual positioning with coordinate control
+- Basic equipment labels that can now be toggled on/off
+- Hover popup feature that shows equipment name after 1-second hover when labels are hidden
+- Equipment selection and basic manipulation
+- Ctrl + mouse scroll wheel rotation for selected equipment
+- Persistence of equipment items in saved projects
+
+## Planned Enhancements
+
+### 1. Equipment Library Organization and UI
+- **Searchable Equipment Catalog**: Implement a search function to quickly find specific equipment types
+- **Equipment Categories**: Organize equipment into logical categories (e.g., stages, tents, seating, amenities, barriers)
+- **Visual Thumbnails**: Add visual previews of each equipment type for easier recognition
+- **Favorites System**: Allow users to mark commonly used equipment as favorites for quick access
+- **Recently Used Items**: Track and display recently used equipment items
+- **Equipment Details Panel**: Show detailed specifications when an item is selected in the library
+
+### 2. Equipment Customization
+- **Custom Equipment Creation**: Allow users to create and save custom equipment items
+- **Equipment Templates**: Save configured equipment as reusable templates
+- **Equipment Groups**: Create and save groups of related equipment items
+- **Color Coding**: Apply color schemes to equipment for better visual organization
+- **Custom Properties**: Add user-defined properties to equipment (e.g., weight, power requirements)
+- **Equipment Notes**: Attach notes to specific equipment items
+
+### 3. Equipment Interaction and Manipulation
+- **Multi-select Capabilities**: Select multiple equipment items at once
+- 
+- **Alignment Tools**: Snap equipment to grid or to other equipment items
+- **Z-order Control**: Manage which equipment appears in front/behind others
+- **Lock Position**: Prevent accidental movement of finalized equipment
+- **Equipment Duplication**: Quickly create copies with same properties
+
+### 4. Equipment Data and Analytics
+- **Equipment Inventory**: Track available vs. placed equipment
+- **Area Utilization**: Calculate space usage and density
+- **Equipment Reports**: Generate lists of equipment used in the layout
+- **Export Equipment Lists**: Create detailed equipment manifests for procurement
+- **Equipment Requirements**: Calculate power, staffing, or other resource needs
+
+### 5. Advanced Features
+- **Equipment Rules**: Define spacing rules or requirements between equipment types
+- **Conflict Detection**: Highlight when equipment is placed improperly
+- **3D Visualization**: Add simple 3D views of equipment layout
+- **Time-based Placement**: Schedule equipment for different phases of event setup
+- **Version Control**: Track changes to equipment placement over time
+- **Real-world Scale Integration**: Ensure equipment sizes are accurate to real-world dimensions
+
+## Immediate Implementation Tasks
+
+1. **Equipment Search and Filtering**:
+   - Add search input to equipment library drawer
+   - Implement filtering logic based on equipment name and properties
+   - Show/hide equipment based on search results
+
+2. **Equipment Categorization**:
+   - Define logical categories for equipment types
+   - Update equipment data structure to include category information
+   - Add category filtering UI to equipment library drawer
+   - Implement collapsible category sections
+
+3. **Custom Equipment Creation**:
+   - Design UI for custom equipment definition
+   - Add form for dimensions, name, and properties
+   - Implement save functionality for custom equipment
+   - Allow editing of custom equipment
+
+4. **Equipment Visualization Improvements**:
+   - Add thumbnail previews to equipment library items
+   - Improve visual representation on the canvas
+   - Add optional detailed view with specifications
+   - Implement consistent visual language for equipment types
+
+5. **Equipment Grouping and Multi-select**:
+   - Implement multi-selection UI and logic
+   - Add group creation, saving, and manipulation
+   - Ensure groups maintain relative positions when moved
+   - Allow groups to be saved as templates
+
+## Technical Implementation Considerations
+
+- Update the equipment data model to support new metadata (categories, custom properties)
+- Extend the mapStore to handle equipment grouping and advanced selection
+- Create new UI components for enhanced equipment library experience
+- Implement efficient search algorithms for large equipment libraries
+- Design a robust custom equipment serialization format
+- Ensure backward compatibility with existing project files
+
+## Success Metrics
+
+- Reduced time to find and place equipment items
+- Increased variety of equipment items used in layouts
+- Higher accuracy in equipment placement and scale
+- Improved user satisfaction with equipment management workflow
+- Reduced errors in equipment positioning and conflicts

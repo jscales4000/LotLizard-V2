@@ -19,8 +19,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ImageIcon from '@mui/icons-material/Image';
 import MapIcon from '@mui/icons-material/Map';
-import LockIcon from '@mui/icons-material/Lock';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
+import SearchIcon from '@mui/icons-material/Search';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -106,7 +105,7 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
   const [isSearching, setIsSearching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { setImageUrl, imageLocked, setImageLocked, setPixelsPerMeter } = useMapStore();
+  const { setImageUrl, setPixelsPerMeter } = useMapStore();
   
   // Initialize Google Maps API with the API key
   useEffect(() => {
@@ -324,18 +323,7 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
               </IconButton>
             </Box>
             
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={imageLocked}
-                  onChange={(e) => setImageLocked(e.target.checked)}
-                  icon={<LockOpenIcon />}
-                  checkedIcon={<LockIcon />}
-                />
-              }
-              label={imageLocked ? "Image Locked" : "Image Unlocked"}
-              sx={{ mb: 1 }}
-            />
+
             
             <SyncedTabs 
               value={tabValue} 

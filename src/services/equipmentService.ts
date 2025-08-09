@@ -3,15 +3,21 @@
 export interface EquipmentTemplate {
   id: string;
   name: string;
-  category: 'booth' | 'ride' | 'game' | 'food' | 'utility';
+  category: EquipmentCategory;
   width: number; // in meters
   height: number; // in meters
   color: string;
   description?: string;
   minSpacing?: number; // minimum spacing from other equipment in meters
+  isCustom?: boolean; // flag for custom user-created equipment
 }
 
+// Type for equipment categories
+export type EquipmentCategory = 'booth' | 'ride' | 'game' | 'food' | 'utility' | 'custom';
+
 export class EquipmentService {
+  private static readonly STORAGE_KEY = 'lotlizard_custom_equipment';
+  
   /**
    * Standard carnival equipment templates with real-world dimensions
    */
@@ -217,14 +223,14 @@ export class EquipmentService {
    * Get equipment template by ID
    */
   static getEquipmentTemplate(id: string): EquipmentTemplate | undefined {
-    return this.getEquipmentTemplates().find(template => template.id === id);
+    return this.getAllTemplates().find(template => template.id === id);
   }
 
   /**
    * Get equipment templates by category
    */
-  static getEquipmentByCategory(category: string): EquipmentTemplate[] {
-    return this.getEquipmentTemplates().filter(template => template.category === category);
+  static getEquipmentByCategory(category: EquipmentCategory): EquipmentTemplate[] {
+    return this.getAllTemplates().filter(template => template.category === category);
   }
 
   /**
@@ -238,5 +244,108 @@ export class EquipmentService {
     }
     
     return `${widthMeters.toFixed(1)}×${heightMeters.toFixed(1)} m`;
+  }
+
+  /**
+   * Save a custom equipment template
+   */
+  static saveCustomTemplate(template: Omit<EquipmentTemplate, 'id' | 'isCustom'>): EquipmentTemplate {
+    // Generate a unique ID for the new template
+    const id = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Create the full template with the custom flag
+    const newTemplate: EquipmentTemplate = {
+      ...template,
+      id,
+      isCustom: true,
+    };
+    
+    // Get existing custom templates from local storage
+    const existingTemplates = this.getCustomTemplates();
+    
+    // Add the new template
+    const updatedTemplates = [...existingTemplates, newTemplate];
+    
+    // Save back to local storage
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedTemplates));
+    
+    return newTemplate;
+  }
+
+  /**
+   * Update an existing custom equipment template
+   */
+  static updateCustomTemplate(id: string, updates: Partial<Omit<EquipmentTemplate, 'id' | 'isCustom'>>): EquipmentTemplate | null {
+    // Get existing custom templates from local storage
+    const customTemplates = this.getCustomTemplates();
+    
+    // Find the template to update
+    const templateIndex = customTemplates.findIndex(template => template.id === id);
+    
+    if (templateIndex === -1) {
+      return null; // Template not found
+    }
+    
+    // Update the template
+    const updatedTemplate: EquipmentTemplate = {
+      ...customTemplates[templateIndex],
+      ...updates
+    };
+    
+    // Replace in the array
+    customTemplates[templateIndex] = updatedTemplate;
+    
+    // Save back to local storage
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(customTemplates));
+    
+    return updatedTemplate;
+  }
+
+  /**
+   * Delete a custom equipment template
+   */
+  static deleteCustomTemplate(id: string): boolean {
+    // Get existing custom templates from local storage
+    const customTemplates = this.getCustomTemplates();
+    
+    // Filter out the template to delete
+    const filteredTemplates = customTemplates.filter(template => template.id !== id);
+    
+    if (filteredTemplates.length === customTemplates.length) {
+      return false; // Template not found
+    }
+    
+    // Save back to local storage
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredTemplates));
+    
+    return true;
+  }
+
+  /**
+   * Get all custom equipment templates
+   */
+  static getCustomTemplates(): EquipmentTemplate[] {
+    try {
+      const customTemplatesString = localStorage.getItem(this.STORAGE_KEY);
+      if (!customTemplatesString) {
+        return [];
+      }
+      
+      const customTemplates = JSON.parse(customTemplatesString);
+      return Array.isArray(customTemplates) ? customTemplates : [];
+    } catch (e) {
+      console.error('Failed to load custom equipment templates:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Get all equipment templates (built-in and custom)
+   */
+  static getAllTemplates(): EquipmentTemplate[] {
+    const standardTemplates = this.getEquipmentTemplates();
+    const customTemplates = this.getCustomTemplates();
+    
+    return [...standardTemplates, ...customTemplates];
   }
 }
