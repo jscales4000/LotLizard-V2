@@ -1,5 +1,30 @@
 # Project Log - LotLizard V2
 
+## Version 0.1.5 (August 9, 2025)
+
+### Project Management System Implementation
+
+#### Changes:
+- **Project Service**: Created ProjectService class to manage project CRUD operations
+- **Project Storage**: Implemented local storage-based project persistence
+- **Project Drawer UI**: Enhanced ProjectsDrawer with full project management capabilities
+- **Project Import/Export**: Added JSON-based project import and export functionality
+- **Map Navigation Widget**: Added directional controls for panning Google Maps in the ImageImportDrawer
+
+#### Technical Details:
+- Created projectService.ts with methods for creating, saving, loading, and managing projects
+- Implemented project serialization and deserialization logic
+- Integrated ProjectsDrawer component with ProjectService for all actions
+- Added dialogs for New Project, Open Project, and Save As operations
+- Implemented recent projects list with automatic sorting by last updated time
+- Created intuitive navigation controls with dynamic panning distance based on zoom level
+
+#### Benefits:
+- Users can now save their work and resume later
+- Project sharing via import/export functionality
+- Improved user experience with recent projects list
+- Foundation for future cloud-based project storage
+
 ## Version 0.1.4 (August 9, 2025)
 
 ### Google Maps API Search Fix

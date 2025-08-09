@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -9,6 +9,15 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Snackbar,
+  Alert,
+  AlertColor,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
@@ -18,6 +27,7 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import AddIcon from '@mui/icons-material/Add';
 import HistoryIcon from '@mui/icons-material/History';
+import { ProjectService, Project } from '../../services/projectService';
 
 interface ProjectsDrawerProps {
   open: boolean;
@@ -25,34 +35,212 @@ interface ProjectsDrawerProps {
 }
 
 const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<'new' | 'save' | 'open'>('new');
+  const [projectName, setProjectName] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>('success');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Define showSnackbar function first since it's used by loadProjects
+  const showSnackbar = useCallback((message: string, severity: AlertColor = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
+  
+  // Define loadProjects with useCallback to prevent dependency changes on every render
+  const loadProjects = useCallback(() => {
+    try {
+      const allProjects = ProjectService.getAllProjects();
+      setProjects(allProjects);
+      
+      const recent = ProjectService.getRecentProjects();
+      setRecentProjects(recent);
+      
+      const current = ProjectService.getCurrentProject();
+      if (current) {
+        setProjectName(current.name);
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      showSnackbar('Failed to load projects', 'error');
+    }
+  }, [showSnackbar]);
+  
+  // Load projects on initial render
+  useEffect(() => {
+    if (open) {
+      loadProjects();
+    }
+  }, [open, loadProjects]);
+  
+  // showSnackbar moved above loadProjects to fix order of declaration
+  
   const handleNewProject = () => {
-    console.log('New Project');
-    // TODO: Implement new project functionality
+    setDialogType('new');
+    setProjectName('New Project');
+    setDialogOpen(true);
   };
-
+  
   const handleOpenProject = () => {
-    console.log('Open Project');
-    // TODO: Implement open project functionality
+    setDialogType('open');
+    setDialogOpen(true);
   };
-
+  
   const handleSaveProject = () => {
-    console.log('Save Project');
-    // TODO: Implement save project functionality
+    try {
+      const currentProject = ProjectService.getCurrentProject();
+      
+      if (!currentProject) {
+        // If no project exists, open the save dialog
+        setDialogType('save');
+        setProjectName('New Project');
+        setDialogOpen(true);
+        return;
+      }
+      
+      // Save current project
+      const savedProject = ProjectService.saveCurrentState();
+      showSnackbar(`Project "${savedProject.name}" saved successfully`);
+      loadProjects(); // Reload projects
+    } catch (error) {
+      console.error('Error saving project:', error);
+      showSnackbar('Failed to save project', 'error');
+    }
   };
-
+  
   const handleSaveAsProject = () => {
-    console.log('Save As Project');
-    // TODO: Implement save as project functionality
+    setDialogType('save');
+    
+    const currentProject = ProjectService.getCurrentProject();
+    if (currentProject) {
+      setProjectName(`${currentProject.name} - Copy`);
+    } else {
+      setProjectName('New Project');
+    }
+    
+    setDialogOpen(true);
   };
-
+  
   const handleExportProject = () => {
-    console.log('Export Project');
-    // TODO: Implement export project functionality
+    try {
+      const currentProject = ProjectService.getCurrentProject();
+      
+      if (!currentProject) {
+        showSnackbar('No project to export', 'warning');
+        return;
+      }
+      
+      const dataUri = ProjectService.exportProject(currentProject.id);
+      
+      // Create a download link
+      const link = document.createElement('a');
+      link.href = dataUri;
+      link.download = `${currentProject.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showSnackbar('Project exported successfully');
+    } catch (error) {
+      console.error('Error exporting project:', error);
+      showSnackbar('Failed to export project', 'error');
+    }
+  };
+  
+  const handleImportProject = () => {
+    // Trigger hidden file input
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const jsonData = e.target?.result as string;
+        const importedProject = ProjectService.importProject(jsonData);
+        
+        // Load the imported project
+        ProjectService.loadProject(importedProject.id);
+        
+        showSnackbar(`Project "${importedProject.name}" imported successfully`);
+        loadProjects(); // Reload projects
+        onClose(); // Close drawer
+      } catch (error) {
+        console.error('Error importing project:', error);
+        showSnackbar('Failed to import project. Invalid format.', 'error');
+      }
+    };
+    
+    reader.readAsText(file);
+    // Reset file input
+    event.target.value = '';
   };
 
-  const handleImportProject = () => {
-    console.log('Import Project');
-    // TODO: Implement import project functionality
+  // Handle dialog confirm
+  const handleDialogConfirm = () => {
+    try {
+      if (dialogType === 'new') {
+        // Create new project
+        const newProject = ProjectService.createNewProject(projectName);
+        ProjectService.setCurrentProject(newProject.id);
+        ProjectService.saveProject(newProject);
+        
+        // Reset map and equipment stores to blank slate
+        // This would be better handled within the ProjectService
+        window.location.reload(); // Temporary solution to clear state
+        
+        showSnackbar(`New project "${projectName}" created`);
+      } 
+      else if (dialogType === 'save') {
+        // Save as new project
+        ProjectService.saveCurrentState(projectName);
+        showSnackbar(`Project "${projectName}" saved successfully`);
+      }
+      else if (dialogType === 'open') {
+        // Open selected project
+        if (!selectedProjectId) {
+          showSnackbar('No project selected', 'warning');
+          return;
+        }
+        
+        const loaded = ProjectService.loadProject(selectedProjectId);
+        if (loaded) {
+          const project = ProjectService.getProject(selectedProjectId);
+          if (project) {
+            showSnackbar(`Project "${project.name}" opened successfully`);
+            onClose(); // Close drawer after successful open
+          }
+        } else {
+          showSnackbar('Failed to open project', 'error');
+        }
+      }
+      
+      loadProjects(); // Reload projects list
+      setDialogOpen(false);
+    } catch (error) {
+      console.error('Error in dialog action:', error);
+      showSnackbar(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    }
+  };
+
+  // Handle project selection
+  const handleProjectSelect = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    const project = projects.find(p => p.id === projectId);
+    if (project) {
+      setProjectName(project.name);
+    }
   };
 
   return (
@@ -154,7 +342,7 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
                     </ListItemIcon>
                     <ListItemText 
                       primary="Export Project" 
-                      secondary="Export to various formats"
+                      secondary="Export to JSON format"
                     />
                   </ListItemButton>
                 </ListItem>
@@ -166,7 +354,7 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
                     </ListItemIcon>
                     <ListItemText 
                       primary="Import Project" 
-                      secondary="Import from file or other formats"
+                      secondary="Import from JSON file"
                     />
                   </ListItemButton>
                 </ListItem>
@@ -181,17 +369,112 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
                 <HistoryIcon sx={{ mr: 1, fontSize: 16 }} />
                 Recent Projects
               </Typography>
-              <Box sx={{ 
-                p: 2, 
-                textAlign: 'center', 
-                color: 'text.secondary',
-                fontStyle: 'italic'
-              }}>
-                No recent projects
-              </Box>
+              
+              {recentProjects.length > 0 ? (
+                <List disablePadding>
+                  {recentProjects.map((project) => (
+                    <ListItem key={project.id} disablePadding>
+                      <ListItemButton onClick={() => {
+                        setSelectedProjectId(project.id);
+                        ProjectService.loadProject(project.id);
+                        showSnackbar(`Project "${project.name}" opened`);
+                        onClose();
+                      }}>
+                        <ListItemText 
+                          primary={project.name} 
+                          secondary={new Date(project.updatedAt).toLocaleDateString()}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Box sx={{ 
+                  p: 2, 
+                  textAlign: 'center', 
+                  color: 'text.secondary',
+                  fontStyle: 'italic'
+                }}>
+                  No recent projects
+                </Box>
+              )}
             </Box>
           </Box>
         </Box>
+        
+        {/* Dialogs */}
+        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+          <DialogTitle>
+            {dialogType === 'new' ? 'Create New Project' : 
+             dialogType === 'save' ? 'Save Project As' : 'Open Project'}
+          </DialogTitle>
+          <DialogContent>
+            {dialogType === 'open' ? (
+              // Open project dialog
+              <List sx={{ minWidth: 300 }}>
+                {projects.length > 0 ? projects.map((project) => (
+                  <ListItem key={project.id} disablePadding>
+                    <ListItemButton 
+                      onClick={() => handleProjectSelect(project.id)}
+                      selected={selectedProjectId === project.id}
+                    >
+                      <ListItemText
+                        primary={project.name}
+                        secondary={`Last updated: ${new Date(project.updatedAt).toLocaleString()}`}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                )) : (
+                  <ListItem>
+                    <ListItemText primary="No projects found" />
+                  </ListItem>
+                )}
+              </List>
+            ) : (
+              // New or Save As dialog
+              <TextField
+                autoFocus
+                margin="dense"
+                label="Project Name"
+                fullWidth
+                variant="outlined"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+              />
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleDialogConfirm} variant="contained" color="primary">
+              {dialogType === 'new' ? 'Create' : dialogType === 'save' ? 'Save' : 'Open'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Snackbar */}
+        <Snackbar 
+          open={snackbarOpen} 
+          autoHideDuration={4000} 
+          onClose={() => setSnackbarOpen(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert 
+            onClose={() => setSnackbarOpen(false)} 
+            severity={snackbarSeverity} 
+            sx={{ width: '100%' }}
+          >
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
+        
+        {/* Hidden file input for import */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept=".json"
+          style={{ display: 'none' }}
+        />
     </Box>
   );
 };

@@ -12,7 +12,8 @@ import {
   CircularProgress,
   Paper,
   LinearProgress,
-  styled
+  styled,
+  TextField
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -20,8 +21,14 @@ import ImageIcon from '@mui/icons-material/Image';
 import MapIcon from '@mui/icons-material/Map';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
-import SearchIcon from '@mui/icons-material/Search';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import NavigationIcon from '@mui/icons-material/Navigation';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useMapStore } from '../../stores/mapStore';
 import { GoogleMapsService, GoogleMapsLocation, GoogleMapsOptions } from '../../services/googleMapsService';
 
@@ -241,6 +248,37 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
     setMapUrl(url);
   };
   
+  // Handle map navigation/panning
+  const handlePanMap = (direction: 'north' | 'south' | 'east' | 'west') => {
+    // Calculate movement distance based on zoom level
+    // Lower zoom = larger area visible = larger movement distance needed
+    // Movement factor reduced by half as requested by user
+    const moveFactor = 0.005 * Math.pow(0.5, (mapLocation.zoom - 10) / 3);
+    
+    let newLat = mapLocation.lat;
+    let newLng = mapLocation.lng;
+    
+    switch(direction) {
+      case 'north':
+        newLat += moveFactor;
+        break;
+      case 'south':
+        newLat -= moveFactor;
+        break;
+      case 'east':
+        newLng += moveFactor;
+        break;
+      case 'west':
+        newLng -= moveFactor;
+        break;
+    }
+    
+    // Update location and refresh map
+    const newLocation = { ...mapLocation, lat: newLat, lng: newLng };
+    setMapLocation(newLocation);
+    updateMapPreview(newLocation);
+  };
+
   const handleMapTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newMapType = event.target.checked ? 'hybrid' : 'satellite';
     const newOptions = { ...mapOptions, mapType: newMapType as 'satellite' | 'roadmap' | 'terrain' | 'hybrid' };
@@ -425,66 +463,33 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
                   </Alert>
                 )}
 
-                <Box sx={{ display: 'flex', mb: 2 }}>
-                  <Box sx={{ flex: 1, mr: 1 }}>
-                    <Box sx={{ position: 'relative', display: 'flex' }}>
-                      <Box
-                        component="input"
-                        sx={{
-                          flex: 1,
-                          p: '10px 14px',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                          fontSize: '16px'
-                        }}
-                        placeholder="Enter an address or location"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                      />
-                      <IconButton 
-                        onClick={handleSearch} 
-                        disabled={isSearching}
-                        sx={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
-                      >
-                        {isSearching ? <CircularProgress size={20} /> : <SearchIcon />}
-                      </IconButton>
-                    </Box>
-                  </Box>
-                  <Button 
-                    variant="contained" 
-                    startIcon={<AddLocationIcon />}
-                    onClick={handleSearch}
-                    disabled={isSearching || !searchQuery.trim()}
-                  >
-                    Search
-                  </Button>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                    Search for a location
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    placeholder="Enter address or place name"
+                    value={searchQuery}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                    onKeyPress={(e: React.KeyboardEvent) => e.key === 'Enter' && handleSearch()}
+                  />
                 </Box>
+                <Button 
+                  variant="contained" 
+                  fullWidth
+                  startIcon={<AddLocationIcon />}
+                  onClick={handleSearch}
+                  disabled={isSearching || !searchQuery.trim()}
+                  sx={{ mb: 2 }}
+                >
+                  {isSearching ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+                  Search
+                </Button>
 
                 <Paper variant="outlined" sx={{ mb: 2, p: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center' }}>
-                    <FormControlLabel
-                      control={
-                        <Switch 
-                          checked={mapOptions.mapType === 'hybrid'}
-                          onChange={handleMapTypeChange}
-                        />
-                      }
-                      label="Show roads and labels"
-                    />
-                    <Box>
-                      <IconButton onClick={() => handleZoomChange(-1)} size="small">
-                        <Box component="span" sx={{ fontSize: '24px' }}>−</Box>
-                      </IconButton>
-                      <Typography component="span" sx={{ mx: 1 }}>
-                        Zoom: {mapLocation.zoom}
-                      </Typography>
-                      <IconButton onClick={() => handleZoomChange(1)} size="small">
-                        <Box component="span" sx={{ fontSize: '24px' }}>+</Box>
-                      </IconButton>
-                    </Box>
-                  </Box>
-
+                  {/* Map Preview */}
                   {mapUrl ? (
                     <Box 
                       component="img" 
@@ -520,6 +525,96 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
                       {mapLocation.address}
                     </Typography>
                   )}
+                  
+                  {/* Navigation Controls */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    justifyContent: 'center', 
+                    alignItems: 'center',
+                    my: 2,
+                    gap: 1
+                  }}>
+                    {/* Up arrow */}
+                    <IconButton 
+                      onClick={() => handlePanMap('north')} 
+                      size="small" 
+                      color="primary"
+                      sx={{ mb: 0.5 }}
+                    >
+                      <ArrowUpwardIcon />
+                    </IconButton>
+                    
+                    {/* Middle row with left, center dot, right */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'center' }}>
+                      <IconButton 
+                        onClick={() => handlePanMap('west')} 
+                        size="small" 
+                        color="primary"
+                        sx={{ mr: 2 }}
+                      >
+                        <ArrowBackIcon />
+                      </IconButton>
+                      
+                      <Box sx={{ 
+                        width: 16, 
+                        height: 16, 
+                        borderRadius: '50%', 
+                        backgroundColor: 'action.disabled',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        opacity: 0.8
+                      }}>
+                        <NavigationIcon sx={{ fontSize: 10, color: 'background.paper', transform: 'rotate(45deg)' }} />
+                      </Box>
+                      
+                      <IconButton 
+                        onClick={() => handlePanMap('east')} 
+                        size="small" 
+                        color="primary"
+                        sx={{ ml: 2 }}
+                      >
+                        <ArrowForwardIcon />
+                      </IconButton>
+                    </Box>
+                    
+                    {/* Down arrow */}
+                    <IconButton 
+                      onClick={() => handlePanMap('south')} 
+                      size="small" 
+                      color="primary"
+                      sx={{ mt: 0.5 }}
+                    >
+                      <ArrowDownwardIcon />
+                    </IconButton>
+                  </Box>
+                  
+                  {/* Zoom Controls */}
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 2 }}>
+                    <IconButton onClick={() => handleZoomChange(-1)} size="small">
+                      <RemoveIcon />
+                    </IconButton>
+                    <Typography component="span" sx={{ mx: 2 }}>
+                      Zoom: {mapLocation.zoom}
+                    </Typography>
+                    <IconButton onClick={() => handleZoomChange(1)} size="small">
+                      <AddIcon />
+                    </IconButton>
+                  </Box>
+                  
+                  {/* Show Roads and Labels */}
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                    <FormControlLabel
+                      control={
+                        <Switch 
+                          checked={mapOptions.mapType === 'hybrid'}
+                          onChange={handleMapTypeChange}
+                        />
+                      }
+                      label="Show roads and labels"
+                    />
+                  </Box>
                 </Paper>
 
                 <Button

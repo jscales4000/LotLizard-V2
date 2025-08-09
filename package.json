@@ -5,6 +5,7 @@
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@googlemaps/js-api-loader": "^1.16.10",
     "@mui/icons-material": "^5.14.19",
     "@mui/material": "^5.14.20",
     "@testing-library/dom": "^10.4.1",
@@ -47,5 +48,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@types/google.maps": "^3.58.1"
   }
 }

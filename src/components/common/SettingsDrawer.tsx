@@ -39,7 +39,14 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
   const [theme, setTheme] = useState('dark');
   const [language, setLanguage] = useState('english');
   
-  const { showGrid, toggleGrid } = useMapStore();
+  const { 
+    showGrid, 
+    toggleGrid, 
+    showCalibrationLine, 
+    toggleCalibrationLine,
+    showEquipmentLabels,
+    toggleEquipmentLabels 
+  } = useMapStore();
 
   const handleClose = () => {
     onClose();
@@ -108,6 +115,26 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
                     />
                   }
                   label="Show Grid"
+                />
+                
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showCalibrationLine}
+                      onChange={toggleCalibrationLine}
+                    />
+                  }
+                  label="Show Calibration Line"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showEquipmentLabels}
+                      onChange={toggleEquipmentLabels}
+                    />
+                  }
+                  label="Show Equipment Labels"
                 />
 
                 <FormControlLabel

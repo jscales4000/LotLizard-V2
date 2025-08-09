@@ -18,11 +18,18 @@ interface MapState {
   gridSpacing: number; // in meters
   gridColor: string;
   
+  // Calibration settings
+  showCalibrationLine: boolean;
+  
+  // Equipment display settings
+  showEquipmentLabels: boolean;
+  
   // Actions
   setScale: (scale: number) => void;
   setPosition: (position: { x: number; y: number }) => void;
   setImageUrl: (url: string | null) => void;
   setImageLocked: (locked: boolean) => void;
+  setPixelsPerMeter: (pixelsPerMeter: number) => void;
   toggleCalibrationMode: () => void;
   addCalibrationPoint: (point: CalibrationPoint) => void;
   clearCalibrationPoints: () => void;
@@ -33,7 +40,11 @@ interface MapState {
   
   // Grid actions
   toggleGrid: () => void;
+  toggleCalibrationLine: () => void;
   setGridSpacing: (spacing: number) => void;
+  
+  // Equipment display actions
+  toggleEquipmentLabels: () => void;
   
   // Zoom actions
   zoomIn: () => void;
@@ -59,11 +70,18 @@ export const useMapStore = create<MapState>((set, get) => ({
   gridSpacing: 3, // 3 meters (approximately 10 feet)
   gridColor: '#333333',
   
+  // Calibration settings
+  showCalibrationLine: true,
+  
+  // Equipment display settings
+  showEquipmentLabels: true,
+  
   // Implement actions
   setScale: (scale) => set({ scale }),
   setPosition: (position) => set({ position }),
   setImageUrl: (imageUrl) => set({ imageUrl }),
   setImageLocked: (imageLocked) => set({ imageLocked }),
+  setPixelsPerMeter: (pixelsPerMeter) => set({ pixelsPerMeter }),
   toggleCalibrationMode: () => set((state) => ({ 
     isCalibrationMode: !state.isCalibrationMode,
     currentCalibrationLine: null // Reset current line when toggling mode
@@ -120,7 +138,11 @@ export const useMapStore = create<MapState>((set, get) => ({
   
   // Grid actions
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+  toggleCalibrationLine: () => set((state) => ({ showCalibrationLine: !state.showCalibrationLine })),
   setGridSpacing: (spacing) => set({ gridSpacing: spacing }),
+  
+  // Equipment display actions
+  toggleEquipmentLabels: () => set((state) => ({ showEquipmentLabels: !state.showEquipmentLabels })),
   
   // Zoom actions
   zoomIn: () => set((state) => ({ scale: Math.min(5, state.scale * 1.2) })),

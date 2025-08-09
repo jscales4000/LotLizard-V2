@@ -25,8 +25,10 @@ const MapCanvas: React.FC = () => {
     setScale,
     setPosition,
     showGrid,
+    showCalibrationLine,
     gridSpacing,
-    gridColor
+    gridColor,
+    showEquipmentLabels
   } = useMapStore();
   
   const { 
@@ -43,7 +45,8 @@ const MapCanvas: React.FC = () => {
     copySelectedItems,
     pasteItems,
     isSelected,
-    getSelectedItems
+    getSelectedItems,
+    rotateItem
   } = useEquipmentStore();
 
   // Local state
@@ -53,6 +56,8 @@ const MapCanvas: React.FC = () => {
     pixelDistance: number;
   } | null>(null);
   const [isDraggingEquipment, setIsDraggingEquipment] = useState(false);
+  const [isRotatingEquipment, setIsRotatingEquipment] = useState(false);
+  const [rotationItem, setRotationItem] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -111,9 +116,65 @@ const MapCanvas: React.FC = () => {
   const getEquipmentAtPoint = (x: number, y: number) => {
     for (let i = equipmentItems.length - 1; i >= 0; i--) {
       const item = equipmentItems[i];
-      if (x >= item.x && x <= item.x + item.width &&
-          y >= item.y && y <= item.y + item.height) {
+      
+      // Transform coordinates to account for rotation
+      const centerX = item.x + item.width / 2;
+      const centerY = item.y + item.height / 2;
+      
+      // Translate point to be relative to item's center
+      const relX = x - centerX;
+      const relY = y - centerY;
+      
+      // Rotate the point in the opposite direction of the item's rotation
+      const angleRadians = -(item.rotation || 0) * Math.PI / 180;
+      const rotatedX = relX * Math.cos(angleRadians) - relY * Math.sin(angleRadians);
+      const rotatedY = relX * Math.sin(angleRadians) + relY * Math.cos(angleRadians);
+      
+      // Check if the rotated point is inside the item (as if it wasn't rotated)
+      if (rotatedX >= -item.width / 2 && rotatedX <= item.width / 2 &&
+          rotatedY >= -item.height / 2 && rotatedY <= item.height / 2) {
         return item;
+      }
+    }
+    return null;
+  };
+  
+  // Check if a point is on a rotation handle
+  const getRotationHandleAtPoint = (x: number, y: number) => {
+    for (let i = equipmentItems.length - 1; i >= 0; i--) {
+      const item = equipmentItems[i];
+      
+      // Only selected items have rotation handles
+      if (!isSelected(item.id)) continue;
+      
+      // Calculate rotation handle position
+      const centerX = item.x + item.width / 2;
+      const centerY = item.y + item.height / 2;
+      
+      // Calculate handle position with item rotation applied
+      const handleDistance = item.height / 2 + 20; // 20px beyond the top of item
+      
+      // Convert rotation to radians - adjust by -90 degrees to make 0 point up
+      const angleRadians = ((item.rotation || 0) - 90) * Math.PI / 180;
+      
+      // The rotation handle is positioned at the top of the item, rotated by the item's angle
+      const handleX = centerX + Math.cos(angleRadians) * handleDistance;
+      const handleY = centerY + Math.sin(angleRadians) * handleDistance;
+      
+      console.log('Handle position for item:', item.id, {
+        centerX, 
+        centerY, 
+        handleX, 
+        handleY, 
+        rotation: item.rotation, 
+        angleRadians
+      });
+      
+      // Check if point is within handle radius (8px)
+      const distanceSquared = Math.pow(x - handleX, 2) + Math.pow(y - handleY, 2);
+      if (distanceSquared <= 64) { // 8px radius squared = 64
+        console.log('Rotation handle detected for item:', item.id, 'at angle:', item.rotation);
+        return item.id;
       }
     }
     return null;
@@ -156,54 +217,179 @@ const MapCanvas: React.FC = () => {
     if (isCalibrationMode) return;
     
     const { x, y } = getCanvasCoordinates(event);
-    const clickedEquipment = getEquipmentAtPoint(x, y);
     
-    if (clickedEquipment) {
-      setIsDraggingEquipment(true);
-      
-      // If Ctrl is pressed, add to selection without changing existing selection
-      if (event.ctrlKey) {
-        selectMultiple(clickedEquipment.id, true);
-      } else if (!isSelected(clickedEquipment.id)) {
-        // If not already selected and not using Ctrl, select only this one
-        selectItem(clickedEquipment.id);
-      }
-      
-      setDragOffset({
-        x: x - clickedEquipment.x,
-        y: y - clickedEquipment.y
-      });
-    } else {
+    if (event.button === 1 || (event.button === 0 && event.altKey)) {
+      // Middle mouse button or Alt+Left click for panning
       setIsPanning(true);
       setPanStart({ x: event.clientX, y: event.clientY });
       setPanStartPosition({ x: position.x, y: position.y });
+      return;
+    }
+    
+    // Check if clicked on a rotation handle first
+    const rotationHandleId = getRotationHandleAtPoint(x, y);
+    if (rotationHandleId) {
+      setIsRotatingEquipment(true);
+      setRotationItem(rotationHandleId);
+      return;
+    }
+    
+    // Check if clicked on an equipment item
+    const clickedItem = getEquipmentAtPoint(x, y);
+    
+    if (clickedItem) {
+      // If shift key is pressed, toggle selection
+      if (event.shiftKey) {
+        selectMultiple(clickedItem.id, true);
+      } else {
+        // If the clicked item is not already selected, select it
+        // If it is already selected, prepare for dragging
+        if (!isSelected(clickedItem.id)) {
+          selectItem(clickedItem.id);
+        }
+      }
+      
+      setIsDraggingEquipment(true);
+      setDragOffset({
+        x: x - clickedItem.x,
+        y: y - clickedItem.y
+      });
+    } else {
+      // If clicked empty space, deselect all
+      deselectAll();
     }
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isCalibrationMode) return;
     
-    if (isDraggingEquipment) {
-      const { x, y } = getCanvasCoordinates(event);
-      const selectedItems = getSelectedItems();
-      
-      // Only move the item directly being dragged
-      if (selectedItems.length === 1) {
-        moveItem(selectedItems[0].id, x - dragOffset.x, y - dragOffset.y);
-      } else if (selectedItems.length > 1) {
-        // Move all selected items as a group
-        const deltaX = x - (selectedItems[0].x + dragOffset.x);
-        const deltaY = y - (selectedItems[0].y + dragOffset.y);
-        moveSelectedItems(deltaX, deltaY);
+    const { x, y } = getCanvasCoordinates(event);
+    
+    // Handle hover popup logic when equipment labels are hidden
+    if (!showEquipmentLabels && !isPanning && !isDraggingEquipment && !isRotatingEquipment) {
+      // Clear any existing hover timeout
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+        setHoverTimeout(null);
       }
-    } else if (isPanning) {
+      
+      const hoveredEquipment = getEquipmentAtPoint(x, y);
+      
+      if (hoveredEquipment) {
+        // Set position where the popup should appear (in screen coordinates)
+        setHoverPosition({
+          x: event.clientX,
+          y: event.clientY - 30 // Show popup above cursor
+        });
+        
+        // Set a timeout to show the popup after 1 second
+        const timeout = setTimeout(() => {
+          setHoverItem(hoveredEquipment.name);
+        }, 1000);
+        
+        setHoverTimeout(timeout);
+      } else {
+        setHoverItem(null);
+      }
+    } else {
+      // Clear hover state when labels are shown or during interactions
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+        setHoverTimeout(null);
+      }
+      setHoverItem(null);
+    }
+    
+    // Change cursor based on what's under it
+    const rotationHandleUnderCursor = getRotationHandleAtPoint(x, y);
+    if (rotationHandleUnderCursor && !isPanning && !isDraggingEquipment && !isRotatingEquipment) {
+      // Set cursor to rotation cursor
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.style.cursor = 'grab';
+      }
+    } else if (!isPanning && !isDraggingEquipment && !isRotatingEquipment) {
+      // Reset cursor if not over anything special
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.style.cursor = 'default';
+      }
+    }
+    
+    if (isPanning) {
       const deltaX = event.clientX - panStart.x;
       const deltaY = event.clientY - panStart.y;
-      
       setPosition({
         x: panStartPosition.x + deltaX,
         y: panStartPosition.y + deltaY
       });
+      return;
+    }
+    
+    if (isRotatingEquipment && rotationItem) {
+      // Find the equipment item being rotated
+      const item = equipmentItems.find(item => item.id === rotationItem);
+      if (item) {
+        // Calculate center of the item
+        const centerX = item.x + item.width / 2;
+        const centerY = item.y + item.height / 2;
+        
+        // Calculate angle between center and cursor position
+        // Use correct atan2 order: atan2(y2-y1, x2-x1)
+        const angleRadians = Math.atan2(y - centerY, x - centerX);
+        // Convert to degrees and adjust to make 0 degrees point up
+        let angleDegrees = (angleRadians * 180 / Math.PI + 90) % 360;
+        
+        // Convert to 0-360 range
+        if (angleDegrees < 0) {
+          angleDegrees += 360;
+        }
+        
+        console.log('Rotation calculation:', {
+          itemId: item.id,
+          centerX,
+          centerY,
+          mouseX: x,
+          mouseY: y,
+          angleRadians,
+          angleDegrees
+        });
+        
+        // Apply snapping to common angles (0°, 45°, 90°, etc.)
+        const snapAngles = [0, 45, 90, 135, 180, 225, 270, 315, 360];
+        const snapThreshold = 10; // Degrees
+        
+        for (const snapAngle of snapAngles) {
+          if (Math.abs(angleDegrees - snapAngle) < snapThreshold) {
+            angleDegrees = snapAngle;
+            break;
+          }
+        }
+        
+        // Update rotation in the store
+        rotateItem(item.id, angleDegrees);
+        
+        // Update cursor
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.style.cursor = 'grabbing';
+        }
+      }
+      return;
+    }
+    
+    if (isDraggingEquipment && !imageLocked) {
+      const selectedItems = getSelectedItems();
+      if (selectedItems.length === 1) {
+        // Single item movement
+        moveItem(selectedItems[0].id, x - dragOffset.x, y - dragOffset.y);
+      } else if (selectedItems.length > 1) {
+        // Calculate movement delta based on first selected item
+        const firstItem = selectedItems[0];
+        const deltaX = x - dragOffset.x - firstItem.x;
+        const deltaY = y - dragOffset.y - firstItem.y;
+        moveSelectedItems(deltaX, deltaY);
+      }
     }
   };
 
@@ -211,6 +397,8 @@ const MapCanvas: React.FC = () => {
     setIsDraggingEquipment(false);
     setDragOffset({ x: 0, y: 0 });
     setIsPanning(false);
+    setIsRotatingEquipment(false);
+    setRotationItem(null); // Reset rotation item to allow future rotations
   };
 
   const handleDragOver = (event: React.DragEvent<HTMLCanvasElement>) => {
@@ -277,7 +465,7 @@ const MapCanvas: React.FC = () => {
 
   // Drawing functions
   const drawActiveCalibrationLine = React.useCallback((ctx: CanvasRenderingContext2D) => {
-    if (!activeCalibrationLine) return;
+    if (!activeCalibrationLine || !showCalibrationLine) return;
     
     ctx.strokeStyle = '#00ff00';
     ctx.lineWidth = 3;
@@ -307,7 +495,7 @@ const MapCanvas: React.FC = () => {
       midX,
       midY - 10
     );
-  }, [activeCalibrationLine]);
+  }, [activeCalibrationLine, showCalibrationLine]);
 
   const drawCurrentCalibrationLine = React.useCallback((ctx: CanvasRenderingContext2D) => {
     if (!currentCalibrationLine?.startPoint) return;
@@ -327,6 +515,11 @@ const MapCanvas: React.FC = () => {
     );
   }, [currentCalibrationLine]);
 
+  // For hover popup functionality
+  const [hoverItem, setHoverItem] = useState<string | null>(null);
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<{x: number, y: number} | null>(null);
+  
   const drawEquipmentItems = React.useCallback((ctx: CanvasRenderingContext2D) => {
     equipmentItems.forEach(item => {
       const selected = isSelected(item.id);
@@ -334,21 +527,69 @@ const MapCanvas: React.FC = () => {
       ctx.strokeStyle = selected ? '#ff0000' : '#000000';
       ctx.lineWidth = selected ? 2 : 1;
       
+      // Save the canvas state before applying transformations
+      ctx.save();
+      
+      // Move to the center of where the rectangle will be
+      const centerX = item.x + item.width / 2;
+      const centerY = item.y + item.height / 2;
+      ctx.translate(centerX, centerY);
+      
+      // Apply rotation if any
+      if (item.rotation) {
+        ctx.rotate(item.rotation * Math.PI / 180); // Convert degrees to radians
+      }
+      
+      // Draw the rectangle centered at the origin
       ctx.beginPath();
-      ctx.rect(item.x, item.y, item.width, item.height);
+      ctx.rect(-item.width / 2, -item.height / 2, item.width, item.height);
       ctx.fill();
       ctx.stroke();
       
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(
-        item.name,
-        item.x + item.width / 2,
-        item.y + item.height / 2
-      );
+      // Draw the item name if labels are enabled
+      if (showEquipmentLabels) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.name, 0, 0);
+      }
+      
+      // Draw rotation handle if selected
+      if (selected) {
+        // Draw a line from center to top-middle to serve as a handle connector
+        ctx.beginPath();
+        ctx.strokeStyle = '#4CAF50'; // Green
+        ctx.lineWidth = 2;
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -item.height / 2 - 20); // Extend 20px beyond the item
+        ctx.stroke();
+        
+        // Draw the rotation handle
+        ctx.beginPath();
+        ctx.fillStyle = '#4CAF50'; // Green
+        ctx.arc(0, -item.height / 2 - 20, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Add rotation angle text if available
+        if (item.rotation !== undefined && item.rotation !== 0) {
+          ctx.fillStyle = '#FFFFFF'; // White text
+          ctx.strokeStyle = '#000000'; // Black outline
+          ctx.font = '12px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.lineWidth = 3;
+          const angleText = `${Math.round(item.rotation)}°`;
+          ctx.strokeText(angleText, 0, -item.height / 2 - 40);
+          ctx.fillText(angleText, 0, -item.height / 2 - 40);
+        }
+      }
+      
+      // Restore the canvas state
+      ctx.restore();
     });
-  }, [equipmentItems, isSelected]);
+  }, [equipmentItems, isSelected, showEquipmentLabels]);
 
   const drawGrid = React.useCallback((ctx: CanvasRenderingContext2D) => {
     if (!showGrid || pixelsPerMeter <= 0) return;
@@ -421,6 +662,44 @@ const MapCanvas: React.FC = () => {
     const wheelHandler = (event: WheelEvent) => {
       event.preventDefault();
       
+      // Check if Ctrl key is pressed for rotation
+      if (event.ctrlKey) {
+        const selectedItems = getSelectedItems();
+        if (selectedItems.length > 0) {
+          // Get the first selected item for rotation
+          const itemToRotate = selectedItems[0];
+          
+          // Calculate rotation increment (5 degrees per scroll step)
+          const rotationIncrement = event.deltaY > 0 ? 5 : -5;
+          
+          // Get current rotation or default to 0
+          let currentRotation = itemToRotate.rotation || 0;
+          
+          // Add the increment
+          let newRotation = currentRotation + rotationIncrement;
+          
+          // Normalize to 0-360 range
+          newRotation = ((newRotation % 360) + 360) % 360;
+          
+          // Apply snapping to common angles if within threshold
+          const snapAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+          const snapThreshold = 3; // Degrees
+          
+          for (const snapAngle of snapAngles) {
+            if (Math.abs(newRotation - snapAngle) < snapThreshold) {
+              newRotation = snapAngle;
+              break;
+            }
+          }
+          
+          // Update rotation in the store
+          rotateItem(itemToRotate.id, newRotation);
+          console.log(`Rotated item ${itemToRotate.id} to ${newRotation} degrees`);
+          return;
+        }
+      }
+      
+      // Normal zoom behavior if Ctrl isn't pressed or no items selected
       // Prevent zooming if image is locked
       if (imageLocked && imageUrl) {
         return;
@@ -448,7 +727,7 @@ const MapCanvas: React.FC = () => {
     return () => {
       canvas.removeEventListener('wheel', wheelHandler);
     };
-  }, [scale, position, setScale, setPosition, imageLocked, imageUrl]);
+  }, [scale, position, setScale, setPosition, imageLocked, imageUrl, getSelectedItems, rotateItem]);
 
   // Add keyboard handler for equipment movement and shortcuts
   useEffect(() => {
@@ -600,6 +879,28 @@ const MapCanvas: React.FC = () => {
         </Box>
       )}
       
+      {/* Equipment name hover popup */}
+      {hoverItem && hoverPosition && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: `${hoverPosition.x}px`,
+            top: `${hoverPosition.y}px`,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            pointerEvents: 'none',
+            zIndex: 2000,
+            transform: 'translate(-50%, -100%)',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+          }}
+        >
+          {hoverItem}
+        </Box>
+      )}
+      
       {imageUrl && (
         <Box
           sx={{
@@ -619,7 +920,7 @@ const MapCanvas: React.FC = () => {
               🔒 Image Locked
             </Box>
           )}
-          {activeCalibrationLine && (
+          {activeCalibrationLine && showCalibrationLine && (
             <Box sx={{ mt: 0.5 }}>
               Calibrated: {CalibrationService.formatDistance(activeCalibrationLine.realWorldDistance)}
             </Box>
