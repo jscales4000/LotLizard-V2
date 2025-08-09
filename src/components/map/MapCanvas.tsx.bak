@@ -369,8 +369,11 @@ const MapCanvas: React.FC = () => {
     ctx.restore();
     drawGrid(ctx);
   }, [loadedImage, scale, position, drawGrid, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawEquipmentItems]);
+    ctx.restore();
+    drawGrid(ctx);
+  }, [loadedImage, scale, position, drawGrid, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawEquipmentItems]);
 
-  // Add wheel event listener
+  // Add wheel event listener for smooth zoom
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -378,26 +381,69 @@ const MapCanvas: React.FC = () => {
     const wheelHandler = (event: WheelEvent) => {
       event.preventDefault();
       
-      // Prevent zooming if image is locked
-      if (imageLocked && imageUrl) {
-        return;
-      }
-      
+      // Get mouse position relative to canvas
       const rect = canvas.getBoundingClientRect();
       const mouseX = event.clientX - rect.left;
       const mouseY = event.clientY - rect.top;
       
-      const zoomFactor = event.deltaY > 0 ? 0.95 : 1.05;
+      // Calculate a smooth zoom factor based on the delta magnitude for slower/smoother zoom
+      // Smaller delta = more gentle zoom
+      const deltaMagnitude = Math.abs(event.deltaY);
+      const baseZoomFactor = 0.01; // Base zoom factor (more gentle)
+      const maxZoomFactor = 0.05; // Maximum zoom factor
+      
+      // Calculate smooth zoom factor - capped between base and max
+      const smoothZoomFactor = Math.min(maxZoomFactor, 
+                               baseZoomFactor + (deltaMagnitude / 1000));
+      
+      // Apply zoom direction
+      const zoomFactor = event.deltaY > 0 ? 
+                     (1 - smoothZoomFactor) : 
+                     (1 + smoothZoomFactor);
+                     
       const newScale = Math.max(0.1, Math.min(5, scale * zoomFactor));
       
-      const canvasMouseX = (mouseX - position.x) / scale;
-      const canvasMouseY = (mouseY - position.y) / scale;
-      
-      const newX = mouseX - canvasMouseX * newScale;
-      const newY = mouseY - canvasMouseY * newScale;
-      
-      setScale(newScale);
-      setPosition({ x: newX, y: newY });
+      if (imageLocked && imageUrl && !selectedId) {
+        // If image is locked and no equipment selected, only move/scale equipment items
+        // This keeps the image fixed while everything else moves
+        const scaleRatio = newScale / scale;
+        
+        // Calculate canvas coordinates
+        const canvasMouseX = (mouseX - position.x) / scale;
+        const canvasMouseY = (mouseY - position.y) / scale;
+        
+        // Update all equipment items
+        equipmentItems.forEach(item => {
+          // Calculate new position relative to mouse position
+          const itemCenterX = item.x + item.width / 2;
+          const itemCenterY = item.y + item.height / 2;
+          
+          const dx = itemCenterX - canvasMouseX;
+          const dy = itemCenterY - canvasMouseY;
+          
+          const newX = canvasMouseX + dx * scaleRatio;
+          const newY = canvasMouseY + dy * scaleRatio;
+          
+          // Update item position and dimensions
+          moveItem(item.id, 
+                  newX - item.width * scaleRatio / 2, 
+                  newY - item.height * scaleRatio / 2);
+                  
+          updateItemDimensions(item.id, 
+                           item.width * scaleRatio, 
+                           item.height * scaleRatio);
+        });
+      } else if (!imageLocked || !imageUrl) {
+        // Normal canvas zooming when image is not locked
+        const canvasMouseX = (mouseX - position.x) / scale;
+        const canvasMouseY = (mouseY - position.y) / scale;
+        
+        const newX = mouseX - canvasMouseX * newScale;
+        const newY = mouseY - canvasMouseY * newScale;
+        
+        setScale(newScale);
+        setPosition({ x: newX, y: newY });
+      }
     };
     
     canvas.addEventListener('wheel', wheelHandler, { passive: false });
@@ -405,25 +451,55 @@ const MapCanvas: React.FC = () => {
     return () => {
       canvas.removeEventListener('wheel', wheelHandler);
     };
-  }, [scale, position, setScale, setPosition, imageLocked, imageUrl]);
-
-  // Add keyboard handler for equipment movement
+  }, [scale, position, setScale, setPosition, imageLocked, imageUrl, moveItem, updateItemDimensions, equipmentItems, selectedId]);
+  
+  // Keyboard shortcut handler
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (imageLocked) return;
-      
-      // Escape key to deselect
-      if (event.key === 'Escape') {
-        selectItem(null);
+      // Skip if we're in an input field or textarea
+      if (event.target instanceof HTMLInputElement || 
+          event.target instanceof HTMLTextAreaElement) {
         return;
       }
       
-      // Delete key to remove selected equipment
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        if (selectedId) {
-          useEquipmentStore.getState().removeItem(selectedId);
-        }
-        return;
+      // Common keyboard shortcuts
+      switch (event.key) {
+        case '+': // Zoom in
+        case '=':
+          event.preventDefault();
+          useMapStore.getState().zoomIn();
+          break;
+        case '-': // Zoom out
+          event.preventDefault();
+          useMapStore.getState().zoomOut();
+          break;
+        case '0': // Reset zoom
+          event.preventDefault();
+          useMapStore.getState().resetZoom();
+          break;
+        case 'f': // Fit to screen
+          event.preventDefault();
+          useMapStore.getState().zoomToFit();
+          break;
+        case 'g': // Toggle grid
+          event.preventDefault();
+          useMapStore.getState().toggleGrid();
+          break;
+        case 'l': // Toggle image lock
+          event.preventDefault();
+          useMapStore.getState().setImageLocked(!imageLocked);
+          break;
+        case 'Escape': // Deselect equipment
+          event.preventDefault();
+          if (selectedId) selectItem(null);
+          break;
+        case 'Delete': // Delete selected equipment
+        case 'Backspace':
+          if (selectedId && document.activeElement === document.body) {
+            event.preventDefault();
+            useEquipmentStore.getState().removeItem(selectedId);
+          }
+          break;
       }
       
       // Arrow keys for fine movement of selected equipment

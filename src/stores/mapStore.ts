@@ -125,6 +125,46 @@ export const useMapStore = create<MapState>((set, get) => ({
   // Zoom actions
   zoomIn: () => set((state) => ({ scale: Math.min(5, state.scale * 1.2) })),
   zoomOut: () => set((state) => ({ scale: Math.max(0.1, state.scale / 1.2) })),
-  zoomToFit: () => set({ scale: 1, position: { x: 0, y: 0 } }),
+  
+  // Fixed zoomToFit that uses 183% zoom and centers content
+  zoomToFit: () => {
+    // We need to use a function that takes a callback to get the current state values
+    set((state) => {
+      // Get canvas dimensions from DOM - this runs on the client side
+      const canvas = document.querySelector('canvas');
+      if (!canvas) return { scale: 1.83, position: { x: 0, y: 0 } };
+      
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      
+      let contentWidth = 800; // Default content width if no image or items
+      let contentHeight = 600; // Default content height if no image or items
+      
+      // If we have an image, use its dimensions
+      if (state.imageUrl) {
+        // Try to get the image element (might not be loaded yet)
+        const img = new Image();
+        img.src = state.imageUrl;
+        
+        if (img.width && img.height) {
+          contentWidth = img.width;
+          contentHeight = img.height;
+        }
+      }
+      
+      // Fixed scale of 183% as requested
+      const newScale = 1.83;
+      
+      // Center the content in the canvas
+      const newX = (canvasWidth - contentWidth * newScale) / 2;
+      const newY = (canvasHeight - contentHeight * newScale) / 2;
+      
+      return { 
+        scale: newScale, 
+        position: { x: newX, y: newY } 
+      };
+    });
+  },
+  
   resetZoom: () => set({ scale: 1 })
 }));

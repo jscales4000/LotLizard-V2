@@ -1,5 +1,19 @@
 # Project Log - LotLizard V2
 
+## Version 0.1.1 (August 8, 2025)
+
+### Enhanced Fit-to-Screen Functionality
+
+#### Changes:
+- Updated "fit to screen" function to always use exactly 183% zoom level
+- Ensured content is properly centered in the canvas when using fit-to-screen
+- Fixed calculation of center position based on canvas and content dimensions
+
+#### Benefits:
+- Consistent view every time fit-to-screen is used
+- Optimal zoom level for viewing the entire map
+- Better user experience with centered content
+
 ## Version 0.1.0 (August 8, 2025)
 
 ### Drawer Architecture and Animation Fixes
