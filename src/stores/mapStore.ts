@@ -6,6 +6,7 @@ interface MapState {
   scale: number;
   position: { x: number; y: number };
   imageUrl: string | null;
+  imageLocked: boolean;
   isCalibrationMode: boolean;
   calibrationPoints: CalibrationPoint[];
   activeCalibrationLine: CalibrationLine | null;
@@ -21,6 +22,7 @@ interface MapState {
   setScale: (scale: number) => void;
   setPosition: (position: { x: number; y: number }) => void;
   setImageUrl: (url: string | null) => void;
+  setImageLocked: (locked: boolean) => void;
   toggleCalibrationMode: () => void;
   addCalibrationPoint: (point: CalibrationPoint) => void;
   clearCalibrationPoints: () => void;
@@ -45,6 +47,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   scale: 1.0,
   position: { x: 0, y: 0 },
   imageUrl: null,
+  imageLocked: false,
   isCalibrationMode: false,
   calibrationPoints: [],
   activeCalibrationLine: null,
@@ -60,6 +63,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   setScale: (scale) => set({ scale }),
   setPosition: (position) => set({ position }),
   setImageUrl: (imageUrl) => set({ imageUrl }),
+  setImageLocked: (imageLocked) => set({ imageLocked }),
   toggleCalibrationMode: () => set((state) => ({ 
     isCalibrationMode: !state.isCalibrationMode,
     currentCalibrationLine: null // Reset current line when toggling mode

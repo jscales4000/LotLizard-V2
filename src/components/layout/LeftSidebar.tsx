@@ -20,13 +20,34 @@ import GridOffIcon from '@mui/icons-material/GridOff';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CropIcon from '@mui/icons-material/Crop';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import ImageSearchIcon from '@mui/icons-material/ImageSearch';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { useMapStore } from '../../stores/mapStore';
 
 // Set width for the left sidebar
 const DRAWER_WIDTH = 60;
 
-const LeftSidebar: React.FC = () => {
+// Updated interface to accept drawer control props
+interface LeftSidebarProps {
+  onProjectsClick: () => void;
+  onImageImportClick: () => void;
+  onSettingsClick: () => void;
+  projectsDrawerOpen: boolean;
+  imageImportDrawerOpen: boolean;
+  settingsDrawerOpen: boolean;
+}
+
+const LeftSidebar: React.FC<LeftSidebarProps> = ({
+  onProjectsClick,
+  onImageImportClick,
+  onSettingsClick,
+  projectsDrawerOpen,
+  imageImportDrawerOpen,
+  settingsDrawerOpen
+}) => {
   const [selectedTool, setSelectedTool] = React.useState<string>('select');
+  
   const { 
     isCalibrationMode, 
     toggleCalibrationMode, 
@@ -39,19 +60,65 @@ const LeftSidebar: React.FC = () => {
   } = useMapStore();
 
   const handleToolSelect = (tool: string) => {
-    setSelectedTool(tool);
-    
-    // Handle calibration tool
-    if (tool === 'calibrate') {
-      if (!isCalibrationMode) {
+    // Interlocked behavior - only one tool can be active at a time
+    if (selectedTool === tool) {
+      // If clicking the same tool, deselect it
+      setSelectedTool('');
+      if (isCalibrationMode) {
         toggleCalibrationMode();
       }
     } else {
-      // If switching to another tool, exit calibration mode
+      // Select the new tool and deselect others
+      setSelectedTool(tool);
+      
+      // Handle calibration tool
+      if (tool === 'calibrate') {
+        if (!isCalibrationMode) {
+          toggleCalibrationMode();
+        }
+      } else {
+        // If switching to another tool, exit calibration mode
+        if (isCalibrationMode) {
+          toggleCalibrationMode();
+        }
+      }
+    }
+  };
+
+  const handleProjectsClick = () => {
+    // Deselect any active tool when opening projects drawer
+    if (selectedTool) {
+      setSelectedTool('');
       if (isCalibrationMode) {
         toggleCalibrationMode();
       }
     }
+    // Call the parent handler
+    onProjectsClick();
+  };
+
+  const handleImageImportClick = () => {
+    // Deselect any active tool when opening image import drawer
+    if (selectedTool) {
+      setSelectedTool('');
+      if (isCalibrationMode) {
+        toggleCalibrationMode();
+      }
+    }
+    // Call the parent handler
+    onImageImportClick();
+  };
+
+  const handleSettingsClick = () => {
+    // Deselect any active tool when opening settings drawer
+    if (selectedTool) {
+      setSelectedTool('');
+      if (isCalibrationMode) {
+        toggleCalibrationMode();
+      }
+    }
+    // Call the parent handler
+    onSettingsClick();
   };
 
   return (
@@ -74,7 +141,63 @@ const LeftSidebar: React.FC = () => {
         height: '100%',
         bgcolor: 'background.paper'
       }}>
-        {/* Upper section - Main Tools */}
+        {/* Upper section - Project & Image Tools */}
+        <List disablePadding>
+          <Tooltip title="Projects" placement="right" arrow>
+            <ListItem disablePadding>
+              <ListItemButton 
+                onClick={handleProjectsClick}
+                sx={{ 
+                  justifyContent: 'center',
+                  minHeight: 48,
+                  px: 1
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}>
+                  <FolderOpenIcon />
+                </ListItemIcon>
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
+          
+          <Tooltip title="Import Image" placement="right" arrow>
+            <ListItem disablePadding>
+              <ListItemButton 
+                onClick={handleImageImportClick}
+                sx={{ 
+                  justifyContent: 'center',
+                  minHeight: 48,
+                  px: 1
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}>
+                  <ImageSearchIcon />
+                </ListItemIcon>
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
+          
+          <Tooltip title="Settings" placement="right" arrow>
+            <ListItem disablePadding>
+              <ListItemButton 
+                onClick={handleSettingsClick}
+                sx={{ 
+                  justifyContent: 'center',
+                  minHeight: 48,
+                  px: 1
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}>
+                  <SettingsIcon />
+                </ListItemIcon>
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
+        </List>
+        
+        <Divider sx={{ my: 1 }} />
+        
+        {/* Main Tools */}
         <List disablePadding>
           <Tooltip title="Select & Move" placement="right" arrow>
             <ListItem disablePadding>
@@ -221,6 +344,8 @@ const LeftSidebar: React.FC = () => {
           </Box>
         </Box>
       </Box>
+      
+      {/* Drawers removed from here - now rendered in AppLayout */}
     </Drawer>
   );
 };

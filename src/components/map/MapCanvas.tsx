@@ -15,6 +15,7 @@ const MapCanvas: React.FC = () => {
     scale, 
     position, 
     imageUrl,
+    imageLocked,
     isCalibrationMode,
     activeCalibrationLine,
     currentCalibrationLine,
@@ -30,21 +31,18 @@ const MapCanvas: React.FC = () => {
   
   const { addItemFromTemplate, items: equipmentItems, selectItem, selectedId, moveItem, updateItemDimensions } = useEquipmentStore();
 
-  // Local state for calibration dialog
+  // Local state
   const [calibrationDialogOpen, setCalibrationDialogOpen] = useState(false);
   const [pendingCalibrationData, setPendingCalibrationData] = useState<{
     endPoint: { x: number; y: number; id: string };
     pixelDistance: number;
   } | null>(null);
-  
-  // Local state for equipment movement
   const [isDraggingEquipment, setIsDraggingEquipment] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  
-  // Local state for canvas panning
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panStartPosition, setPanStartPosition] = useState({ x: 0, y: 0 });
+  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
 
   // Handle window resize
   useEffect(() => {
@@ -62,8 +60,116 @@ const MapCanvas: React.FC = () => {
     };
   }, []);
 
-  // Handle canvas click for calibration
-  // Handle drag and drop
+  // Load image when imageUrl changes
+  useEffect(() => {
+    if (!imageUrl) {
+      setLoadedImage(null);
+      return;
+    }
+    
+    const img = new Image();
+    img.onload = () => {
+      setLoadedImage(img);
+    };
+    img.onerror = () => {
+      console.error('Failed to load image:', imageUrl);
+      setLoadedImage(null);
+    };
+    img.src = imageUrl;
+  }, [imageUrl]);
+
+  // Helper functions
+  const getCanvasCoordinates = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    
+    const rect = canvas.getBoundingClientRect();
+    const screenX = event.clientX - rect.left;
+    const screenY = event.clientY - rect.top;
+    
+    const canvasX = (screenX - position.x) / scale;
+    const canvasY = (screenY - position.y) / scale;
+    
+    return { x: canvasX, y: canvasY };
+  };
+
+  const getEquipmentAtPoint = (x: number, y: number) => {
+    for (let i = equipmentItems.length - 1; i >= 0; i--) {
+      const item = equipmentItems[i];
+      if (x >= item.x && x <= item.x + item.width &&
+          y >= item.y && y <= item.y + item.height) {
+        return item;
+      }
+    }
+    return null;
+  };
+
+  // Event handlers
+  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const { x, y } = getCanvasCoordinates(event);
+    
+    if (isCalibrationMode) {
+      const point = { id: `point-${Date.now()}`, x, y };
+      
+      if (!currentCalibrationLine?.startPoint) {
+        startCalibrationLine(point);
+      } else {
+        const pixelDistance = CalibrationService.calculatePixelDistance(currentCalibrationLine.startPoint, point);
+        setPendingCalibrationData({ endPoint: point, pixelDistance });
+        setCalibrationDialogOpen(true);
+      }
+    } else {
+      const clickedEquipment = getEquipmentAtPoint(x, y);
+      if (clickedEquipment) {
+        selectItem(clickedEquipment.id);
+      } else {
+        selectItem(null);
+      }
+    }
+  };
+
+  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isCalibrationMode) return;
+    
+    const { x, y } = getCanvasCoordinates(event);
+    const clickedEquipment = getEquipmentAtPoint(x, y);
+    
+    if (clickedEquipment) {
+      selectItem(clickedEquipment.id);
+      setIsDraggingEquipment(true);
+      setDragOffset({
+        x: x - clickedEquipment.x,
+        y: y - clickedEquipment.y
+      });
+    } else if (!imageLocked || !imageUrl) {
+      // Canvas panning (only if image is not locked or no image loaded)
+      setIsPanning(true);
+      setPanStart({ x: event.clientX, y: event.clientY });
+      setPanStartPosition({ x: position.x, y: position.y });
+    }
+  };
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isDraggingEquipment && selectedId) {
+      const { x, y } = getCanvasCoordinates(event);
+      moveItem(selectedId, x - dragOffset.x, y - dragOffset.y);
+    } else if (isPanning) {
+      const deltaX = event.clientX - panStart.x;
+      const deltaY = event.clientY - panStart.y;
+      
+      setPosition({
+        x: panStartPosition.x + deltaX,
+        y: panStartPosition.y + deltaY
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingEquipment(false);
+    setDragOffset({ x: 0, y: 0 });
+    setIsPanning(false);
+  };
+
   const handleDragOver = (event: React.DragEvent<HTMLCanvasElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
@@ -86,11 +192,9 @@ const MapCanvas: React.FC = () => {
         const canvasX = (event.clientX - rect.left) * scaleX;
         const canvasY = (event.clientY - rect.top) * scaleY;
         
-        // Convert to image coordinates
         const x = (canvasX - position.x) / scale;
         const y = (canvasY - position.y) / scale;
         
-        // Add equipment at drop position
         addItemFromTemplate(data.templateId, x, y, pixelsPerMeter);
       }
     } catch (error) {
@@ -98,260 +202,78 @@ const MapCanvas: React.FC = () => {
     }
   };
 
-  // Check if click is on equipment item
-  const getEquipmentAtPoint = (x: number, y: number) => {
-    // Check in reverse order (top items first)
-    for (let i = equipmentItems.length - 1; i >= 0; i--) {
-      const item = equipmentItems[i];
-      if (x >= item.x && x <= item.x + item.width &&
-          y >= item.y && y <= item.y + item.height) {
-        return item;
-      }
-    }
-    return null;
-  };
-
-  // Helper function to get canvas coordinates from mouse event
-  const getCanvasCoordinates = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    
-    const rect = canvas.getBoundingClientRect();
-    const screenX = event.clientX - rect.left;
-    const screenY = event.clientY - rect.top;
-    
-    // Transform screen coordinates to canvas coordinates (accounting for zoom and pan)
-    const canvasX = (screenX - position.x) / scale;
-    const canvasY = (screenY - position.y) / scale;
-    
-    return { x: canvasX, y: canvasY };
-  };
-
-  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    
-    const { x, y } = getCanvasCoordinates(event);
-    
-    if (isCalibrationMode) {
-      // Calibration mode logic
-      const point = {
-        id: `point-${Date.now()}`,
-        x,
-        y
-      };
-      
-      if (!currentCalibrationLine?.startPoint) {
-        startCalibrationLine(point);
-      } else {
-        const pixelDistance = CalibrationService.calculatePixelDistance(currentCalibrationLine.startPoint, point);
-        setPendingCalibrationData({ endPoint: point, pixelDistance });
-        setCalibrationDialogOpen(true);
-      }
-    } else {
-      // Equipment selection logic
-      const clickedEquipment = getEquipmentAtPoint(x, y);
-      if (clickedEquipment) {
-        selectItem(clickedEquipment.id);
-      } else {
-        selectItem(null); // Deselect if clicking empty space
-      }
-    }
-  };
-  
-  // Handle calibration distance confirmation
   const handleCalibrationConfirm = (distance: number) => {
-    if (!pendingCalibrationData) return;
+    if (!pendingCalibrationData || !currentCalibrationLine?.startPoint) return;
     
     const endPointWithId = {
       ...pendingCalibrationData.endPoint,
       id: `point-${Date.now()}`
     };
+    
+    // Calculate the new pixelsPerMeter BEFORE updating equipment
+    const pixelDistance = CalibrationService.calculatePixelDistance(
+      currentCalibrationLine.startPoint, 
+      endPointWithId
+    );
+    const newPixelsPerMeter = pixelDistance / distance;
+    
+    // Complete the calibration line
     completeCalibrationLine(endPointWithId, distance);
     
-    // Update equipment dimensions with new calibration
-    updateItemDimensions(pixelsPerMeter);
+    // Update equipment dimensions with the NEW pixelsPerMeter value
+    updateItemDimensions(newPixelsPerMeter);
     
     setPendingCalibrationData(null);
     setCalibrationDialogOpen(false);
   };
-  
-  // Handle mouse down for equipment dragging or canvas panning
-  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isCalibrationMode) return;
-    
-    const { x, y } = getCanvasCoordinates(event);
-    
-    const clickedEquipment = getEquipmentAtPoint(x, y);
-    
-    if (clickedEquipment) {
-      // Equipment dragging
-      selectItem(clickedEquipment.id);
-      setIsDraggingEquipment(true);
-      setDragOffset({
-        x: x - clickedEquipment.x,
-        y: y - clickedEquipment.y
-      });
-    } else {
-      // Canvas panning (when not clicking on equipment)
-      setIsPanning(true);
-      setPanStart({ x: event.clientX, y: event.clientY });
-      setPanStartPosition({ x: position.x, y: position.y });
-    }
-  };
-  
-  // Handle mouse move for equipment dragging or canvas panning
-  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isDraggingEquipment && selectedId) {
-      // Equipment dragging
-      const { x, y } = getCanvasCoordinates(event);
-      
-      // Move the selected equipment
-      moveItem(selectedId, x - dragOffset.x, y - dragOffset.y);
-    } else if (isPanning) {
-      // Canvas panning
-      const deltaX = event.clientX - panStart.x;
-      const deltaY = event.clientY - panStart.y;
-      
-      setPosition({
-        x: panStartPosition.x + deltaX,
-        y: panStartPosition.y + deltaY
-      });
-    }
-  };
-  
-  // Handle mouse up to stop dragging
-  const handleMouseUp = () => {
-    setIsDraggingEquipment(false);
-    setDragOffset({ x: 0, y: 0 });
-    setIsPanning(false);
-  };
-  
 
-  
-  // Handle calibration dialog close
   const handleCalibrationDialogClose = () => {
     setPendingCalibrationData(null);
     setCalibrationDialogOpen(false);
   };
 
-  // Function to draw the active calibration line
+  // Drawing functions
   const drawActiveCalibrationLine = React.useCallback((ctx: CanvasRenderingContext2D) => {
     if (!activeCalibrationLine) return;
     
-    const line = activeCalibrationLine;
-    // Draw line
     ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 5]);
     ctx.beginPath();
-    ctx.moveTo(line.startPoint.x, line.startPoint.y);
-    ctx.lineTo(line.endPoint.x, line.endPoint.y);
+    ctx.moveTo(activeCalibrationLine.startPoint.x, activeCalibrationLine.startPoint.y);
+    ctx.lineTo(activeCalibrationLine.endPoint.x, activeCalibrationLine.endPoint.y);
     ctx.stroke();
     
-    // Draw endpoints
     ctx.fillStyle = '#00ff00';
-    ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.arc(line.startPoint.x, line.startPoint.y, 4, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(line.endPoint.x, line.endPoint.y, 4, 0, 2 * Math.PI);
+    ctx.arc(activeCalibrationLine.startPoint.x, activeCalibrationLine.startPoint.y, 8, 0, 2 * Math.PI);
     ctx.fill();
     
-    // Draw distance label
-    const midX = (line.startPoint.x + line.endPoint.x) / 2;
-    const midY = (line.startPoint.y + line.endPoint.y) / 2;
+    ctx.beginPath();
+    ctx.arc(activeCalibrationLine.endPoint.x, activeCalibrationLine.endPoint.y, 8, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    const midX = (activeCalibrationLine.startPoint.x + activeCalibrationLine.endPoint.x) / 2;
+    const midY = (activeCalibrationLine.startPoint.y + activeCalibrationLine.endPoint.y) / 2;
+    
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(
-      CalibrationService.formatDistance(line.realWorldDistance),
+      CalibrationService.formatDistance(activeCalibrationLine.realWorldDistance),
       midX,
       midY - 10
     );
   }, [activeCalibrationLine]);
-  
-  // Function to draw grid overlay
-  const drawGrid = React.useCallback((ctx: CanvasRenderingContext2D) => {
-    if (!showGrid || pixelsPerMeter <= 0) return;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    // Calculate grid spacing in pixels
-    const gridSpacingPixels = gridSpacing * pixelsPerMeter * scale;
-    
-    // Only draw grid if spacing is reasonable (not too dense)
-    if (gridSpacingPixels < 10) return;
-    
-    ctx.save();
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 0.3;
-    
-    // Calculate grid bounds
-    const startX = Math.floor(-position.x / gridSpacingPixels) * gridSpacingPixels + position.x;
-    const startY = Math.floor(-position.y / gridSpacingPixels) * gridSpacingPixels + position.y;
-    
-    // Draw vertical lines
-    for (let x = startX; x < canvas.width + gridSpacingPixels; x += gridSpacingPixels) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    
-    // Draw horizontal lines
-    for (let y = startY; y < canvas.height + gridSpacingPixels; y += gridSpacingPixels) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-    
-    ctx.restore();
-  }, [showGrid, pixelsPerMeter, scale, position, gridSpacing, gridColor]);
-  
-  // Function to draw equipment items
-  const drawEquipmentItems = React.useCallback((ctx: CanvasRenderingContext2D) => {
-    equipmentItems.forEach((item) => {
-      // Draw equipment rectangle
-      ctx.fillStyle = item.color;
-      ctx.globalAlpha = 0.7;
-      ctx.fillRect(item.x, item.y, item.width, item.height);
-      
-      // Draw border (highlight if selected)
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = selectedId === item.id ? '#ffffff' : item.color;
-      ctx.lineWidth = selectedId === item.id ? 3 : 2;
-      ctx.setLineDash(selectedId === item.id ? [5, 5] : []);
-      ctx.strokeRect(item.x, item.y, item.width, item.height);
-      
-      // Draw equipment name
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(
-        item.name,
-        item.x + item.width / 2,
-        item.y + item.height / 2
-      );
-    });
-  }, [equipmentItems, selectedId]);
-  
 
-  
-  // Function to draw current calibration line being drawn
   const drawCurrentCalibrationLine = React.useCallback((ctx: CanvasRenderingContext2D) => {
     if (!currentCalibrationLine?.startPoint) return;
     
-    // Draw start point
     ctx.fillStyle = '#ffff00';
     ctx.beginPath();
     ctx.arc(currentCalibrationLine.startPoint.x, currentCalibrationLine.startPoint.y, 6, 0, 2 * Math.PI);
     ctx.fill();
     
-    // Draw label for start point
     ctx.fillStyle = '#ffffff';
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
@@ -362,27 +284,67 @@ const MapCanvas: React.FC = () => {
     );
   }, [currentCalibrationLine]);
 
-  // Store loaded image to prevent reloading
-  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
-  
-  // Load image when imageUrl changes
-  useEffect(() => {
-    if (!imageUrl) {
-      setLoadedImage(null);
+  const drawEquipmentItems = React.useCallback((ctx: CanvasRenderingContext2D) => {
+    equipmentItems.forEach((item) => {
+      ctx.fillStyle = item.color;
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(item.x, item.y, item.width, item.height);
+      
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = selectedId === item.id ? '#ffffff' : item.color;
+      ctx.lineWidth = selectedId === item.id ? 3 : 2;
+      ctx.setLineDash(selectedId === item.id ? [5, 5] : []);
+      ctx.strokeRect(item.x, item.y, item.width, item.height);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        item.name,
+        item.x + item.width / 2,
+        item.y + item.height / 2
+      );
+    });
+  }, [equipmentItems, selectedId]);
+
+  const drawGrid = React.useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!showGrid || pixelsPerMeter <= 0) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    ctx.save();
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.3;
+    
+    const gridSpacingPixels = gridSpacing * pixelsPerMeter * scale;
+    
+    if (gridSpacingPixels < 10) {
+      ctx.restore();
       return;
     }
     
-    const img = new Image();
-    img.onload = () => {
-      setLoadedImage(img);
-    };
-    img.onerror = () => {
-      console.error('Failed to load image:', imageUrl);
-      setLoadedImage(null);
-    };
-    img.src = imageUrl;
-  }, [imageUrl]);
-  
+    const offsetX = position.x % gridSpacingPixels;
+    const offsetY = position.y % gridSpacingPixels;
+    
+    for (let x = offsetX; x < canvas.width + gridSpacingPixels; x += gridSpacingPixels) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    
+    for (let y = offsetY; y < canvas.height + gridSpacingPixels; y += gridSpacingPixels) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+  }, [showGrid, pixelsPerMeter, scale, position, gridSpacing, gridColor]);
+
   // Draw on canvas
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -391,35 +353,24 @@ const MapCanvas: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Clear canvas completely
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Save context for transformations
     ctx.save();
-    
-    // Apply zoom and pan transformations
     ctx.translate(position.x, position.y);
     ctx.scale(scale, scale);
     
-    // Draw background image if loaded
     if (loadedImage) {
       ctx.drawImage(loadedImage, 0, 0);
     }
     
-    // Draw calibration elements
     drawActiveCalibrationLine(ctx);
     drawCurrentCalibrationLine(ctx);
-    
-    // Draw equipment items
     drawEquipmentItems(ctx);
     
     ctx.restore();
-    
-    // Draw grid overlay (not transformed)
     drawGrid(ctx);
   }, [loadedImage, scale, position, drawGrid, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawEquipmentItems]);
-  
-  // Add wheel event listener with proper options to prevent passive listener errors
+
+  // Add wheel event listener
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -427,22 +378,21 @@ const MapCanvas: React.FC = () => {
     const wheelHandler = (event: WheelEvent) => {
       event.preventDefault();
       
-      const rect = canvas.getBoundingClientRect();
+      // Prevent zooming if image is locked
+      if (imageLocked && imageUrl) {
+        return;
+      }
       
-      // Get mouse position relative to canvas (screen coordinates)
+      const rect = canvas.getBoundingClientRect();
       const mouseX = event.clientX - rect.left;
       const mouseY = event.clientY - rect.top;
       
-      // Calculate zoom factor (smaller increments for smoother zoom)
       const zoomFactor = event.deltaY > 0 ? 0.95 : 1.05;
       const newScale = Math.max(0.1, Math.min(5, scale * zoomFactor));
       
-      // Calculate new position to zoom towards mouse cursor
-      // Convert mouse position to canvas coordinates before zoom
       const canvasMouseX = (mouseX - position.x) / scale;
       const canvasMouseY = (mouseY - position.y) / scale;
       
-      // Calculate new position after zoom
       const newX = mouseX - canvasMouseX * newScale;
       const newY = mouseY - canvasMouseY * newScale;
       
@@ -450,15 +400,12 @@ const MapCanvas: React.FC = () => {
       setPosition({ x: newX, y: newY });
     };
     
-    // Add event listener with passive: false to allow preventDefault
     canvas.addEventListener('wheel', wheelHandler, { passive: false });
     
     return () => {
       canvas.removeEventListener('wheel', wheelHandler);
     };
-  }, [scale, position, setScale, setPosition]);
-  
-
+  }, [scale, position, setScale, setPosition, imageLocked, imageUrl]);
 
   return (
     <Box 
@@ -468,7 +415,7 @@ const MapCanvas: React.FC = () => {
         height: '100%', 
         position: 'relative',
         overflow: 'hidden',
-        bgcolor: '#121212' // Dark background for the canvas
+        bgcolor: '#121212'
       }}
     >
       <canvas
@@ -487,12 +434,10 @@ const MapCanvas: React.FC = () => {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-
-        onDragOver={handleDragOver}
         onDrop={handleDrop}
+        onDragOver={handleDragOver}
       />
       
-      {/* Display a message when no image is loaded */}
       {!imageUrl && (
         <Box
           sx={{
@@ -510,13 +455,9 @@ const MapCanvas: React.FC = () => {
           <Typography variant="body2">
             Use the "Import Image" button above to load a satellite image
           </Typography>
-          <Typography variant="caption" display="block" sx={{ mt: 1, color: 'warning.main' }}>
-            Note: Canvas functionality is temporarily simplified. Konva.js integration will be restored once build issues are resolved.
-          </Typography>
         </Box>
       )}
       
-      {/* Show loaded image info */}
       {imageUrl && (
         <Box
           sx={{
@@ -531,6 +472,11 @@ const MapCanvas: React.FC = () => {
           }}
         >
           Image loaded • Scale: {Math.round(scale * 100)}%
+          {imageLocked && (
+            <Box sx={{ mt: 0.5, color: 'warning.main' }}>
+              🔒 Image Locked
+            </Box>
+          )}
           {activeCalibrationLine && (
             <Box sx={{ mt: 0.5 }}>
               Calibrated: {CalibrationService.formatDistance(activeCalibrationLine.realWorldDistance)}
@@ -542,7 +488,6 @@ const MapCanvas: React.FC = () => {
         </Box>
       )}
       
-      {/* Calibration mode indicator */}
       {isCalibrationMode && (
         <Box
           sx={{
@@ -562,7 +507,6 @@ const MapCanvas: React.FC = () => {
         </Box>
       )}
       
-      {/* Calibration Dialog */}
       <CalibrationDialog
         open={calibrationDialogOpen}
         onClose={handleCalibrationDialogClose}
