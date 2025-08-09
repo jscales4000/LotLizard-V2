@@ -1,5 +1,50 @@
 # Project Log - LotLizard V2
 
+## Version 0.1.4 (August 9, 2025)
+
+### Google Maps API Search Fix
+
+#### Changes:
+- **Fixed Geocoding Error**: Resolved "maps.Geocoder is not a constructor" error in the Google Maps search functionality
+- **Enhanced Error Handling**: Improved error messages and logging for Google Maps interactions
+- **TypeScript Fixes**: Corrected type definitions for Google Maps Geocoder callback parameters
+
+#### Technical Details:
+- Modified GoogleMapsService.geocodeAddress to use the global google object instead of the local maps variable
+- Added proper error checking and handling for Google Maps API loading issues
+- Implemented detailed console logging to diagnose geocoding problems
+- Updated type signatures to accommodate null results from Google geocoding
+
+#### Benefits:
+- Restored address search functionality in the ImageImportDrawer component
+- Improved user experience with more descriptive error messages
+- Enhanced debugging capability with detailed error logging
+- More robust geocoding implementation that handles API loading edge cases
+
+## Version 0.1.3 (August 9, 2025)
+
+### Google Maps API Integration
+
+#### Changes:
+- **Google Maps Service**: Created GoogleMapsService.ts for API interaction management
+- **Satellite Image Import**: Enhanced ImageImportDrawer with Google Maps search and selection functionality
+- **Automatic Calibration**: Added pixelsPerMeter calculation based on latitude and zoom level
+- **Address Search**: Implemented geocoding to find locations by address or name
+- **Map Customization**: Added controls for zoom level and map type (satellite/hybrid)
+
+#### Technical Details:
+- Integrated @googlemaps/js-api-loader for Google Maps API access
+- Added environment variable configuration for API key management
+- Enhanced mapStore with setPixelsPerMeter method for scale calibration
+- Implemented static map image fetching with proper scale calculation
+- Created automatic conversion from latitude/zoom to real-world scale
+
+#### Benefits:
+- Streamlined lot planning with accurate satellite imagery
+- Automatic calibration reduces manual measurement requirements
+- Enhanced user experience with searchable location finder
+- Scale-accurate image importing for precise equipment placement
+
 ## Version 0.1.2 (August 8, 2025)
 
 ### Advanced Keyboard Shortcuts & Selection Management

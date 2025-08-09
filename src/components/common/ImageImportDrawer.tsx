@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,7 +20,10 @@ import ImageIcon from '@mui/icons-material/Image';
 import MapIcon from '@mui/icons-material/Map';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
+import SearchIcon from '@mui/icons-material/Search';
+import AddLocationIcon from '@mui/icons-material/AddLocation';
 import { useMapStore } from '../../stores/mapStore';
+import { GoogleMapsService, GoogleMapsLocation, GoogleMapsOptions } from '../../services/googleMapsService';
 
 interface ImageImportDrawerProps {
   open: boolean;
@@ -80,9 +83,31 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [mapLocation, setMapLocation] = useState<GoogleMapsLocation>({
+    lat: 37.7749, // Default to San Francisco
+    lng: -122.4194,
+    zoom: 18
+  });
+  const [mapOptions, setMapOptions] = useState<Partial<GoogleMapsOptions>>({
+    mapType: 'satellite',
+    width: 600,
+    height: 400,
+    scale: 2
+  });
+  const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { setImageUrl, imageLocked, setImageLocked } = useMapStore();
+  const { setImageUrl, imageLocked, setImageLocked, setPixelsPerMeter } = useMapStore();
+  
+  // Initialize Google Maps API with the API key
+  useEffect(() => {
+    const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+    if (apiKey) {
+      GoogleMapsService.init(apiKey);
+    }
+  }, []);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -136,21 +161,98 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
   };
 
   const handleImport = async () => {
-    if (!selectedFile || !previewUrl) return;
-    
-    setIsUploading(true);
-    try {
-      setImageUrl(previewUrl);
-      handleClose();
-    } catch (err) {
-      setError('Failed to import image. Please try again.');
-    } finally {
-      setIsUploading(false);
+    if (tabValue === 0) {
+      // File upload tab
+      if (!selectedFile || !previewUrl) return;
+      
+      setIsUploading(true);
+      try {
+        setImageUrl(previewUrl);
+        handleClose();
+      } catch (err) {
+        setError('Failed to import image. Please try again.');
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      // Google Maps tab
+      if (!mapUrl) return;
+      
+      setIsUploading(true);
+      try {
+        // Fetch the map image and calculate pixels per meter
+        const { blob, pixelsPerMeter } = await GoogleMapsService.fetchStaticMapImage(
+          mapUrl,
+          mapLocation.lat,
+          mapLocation.zoom
+        );
+        
+        // Convert blob to data URL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          setImageUrl(dataUrl);
+          setPixelsPerMeter(pixelsPerMeter);
+          handleClose();
+        };
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        setError('Failed to import map image. Please try again.');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
   const handleBrowseFiles = () => {
     fileInputRef.current?.click();
+  };
+  
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      // Verify API key is loaded
+      const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+      console.log('API Key available:', !!apiKey); // Don't log the actual key
+      
+      const location = await GoogleMapsService.geocodeAddress(searchQuery);
+      if (location) {
+        setMapLocation(location);
+        updateMapPreview(location);
+        console.log('Location found:', location);
+      } else {
+        console.warn('No location returned but no error thrown');
+        setError('Location not found. Please try a different search term.');
+      }
+    } catch (err) {
+      console.error('Geocoding error:', err);
+      setError(`Error finding location: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  const updateMapPreview = (location = mapLocation) => {
+    const url = GoogleMapsService.getStaticMapUrl(location, mapOptions);
+    setMapUrl(url);
+  };
+  
+  const handleMapTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newMapType = event.target.checked ? 'hybrid' : 'satellite';
+    const newOptions = { ...mapOptions, mapType: newMapType as 'satellite' | 'roadmap' | 'terrain' | 'hybrid' };
+    setMapOptions(newOptions);
+    updateMapPreview();
+  };
+  
+  const handleZoomChange = (delta: number) => {
+    const newZoom = Math.max(1, Math.min(20, mapLocation.zoom + delta));
+    const newLocation = { ...mapLocation, zoom: newZoom };
+    setMapLocation(newLocation);
+    updateMapPreview(newLocation);
   };
 
 
@@ -309,17 +411,127 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
             </TabPanel>
 
             <TabPanel value={tabValue} index={1}>
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <MapIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+              <Box sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>
-                  Google Maps Integration
+                  Import Satellite Imagery
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Import satellite imagery directly from Google Maps
+                  Search for a location and import satellite imagery from Google Maps
                 </Typography>
-                <Alert severity="info">
-                  Google Maps integration coming soon!
-                </Alert>
+
+                {error && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                  </Alert>
+                )}
+
+                <Box sx={{ display: 'flex', mb: 2 }}>
+                  <Box sx={{ flex: 1, mr: 1 }}>
+                    <Box sx={{ position: 'relative', display: 'flex' }}>
+                      <Box
+                        component="input"
+                        sx={{
+                          flex: 1,
+                          p: '10px 14px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '16px'
+                        }}
+                        placeholder="Enter an address or location"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      />
+                      <IconButton 
+                        onClick={handleSearch} 
+                        disabled={isSearching}
+                        sx={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
+                      >
+                        {isSearching ? <CircularProgress size={20} /> : <SearchIcon />}
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  <Button 
+                    variant="contained" 
+                    startIcon={<AddLocationIcon />}
+                    onClick={handleSearch}
+                    disabled={isSearching || !searchQuery.trim()}
+                  >
+                    Search
+                  </Button>
+                </Box>
+
+                <Paper variant="outlined" sx={{ mb: 2, p: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center' }}>
+                    <FormControlLabel
+                      control={
+                        <Switch 
+                          checked={mapOptions.mapType === 'hybrid'}
+                          onChange={handleMapTypeChange}
+                        />
+                      }
+                      label="Show roads and labels"
+                    />
+                    <Box>
+                      <IconButton onClick={() => handleZoomChange(-1)} size="small">
+                        <Box component="span" sx={{ fontSize: '24px' }}>−</Box>
+                      </IconButton>
+                      <Typography component="span" sx={{ mx: 1 }}>
+                        Zoom: {mapLocation.zoom}
+                      </Typography>
+                      <IconButton onClick={() => handleZoomChange(1)} size="small">
+                        <Box component="span" sx={{ fontSize: '24px' }}>+</Box>
+                      </IconButton>
+                    </Box>
+                  </Box>
+
+                  {mapUrl ? (
+                    <Box 
+                      component="img" 
+                      src={mapUrl} 
+                      alt="Map Preview"
+                      sx={{
+                        width: '100%',
+                        height: 'auto',
+                        maxHeight: '350px',
+                        objectFit: 'contain',
+                        borderRadius: 1,
+                      }}
+                    />
+                  ) : (
+                    <Box 
+                      sx={{ 
+                        height: '250px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        backgroundColor: '#f5f5f5',
+                        borderRadius: 1
+                      }}
+                    >
+                      <Typography color="text.secondary">
+                        Search for a location to display the map
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  {mapLocation.address && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      {mapLocation.address}
+                    </Typography>
+                  )}
+                </Paper>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleImport}
+                  disabled={!mapUrl || isUploading}
+                  startIcon={isUploading ? <CircularProgress size={20} /> : <MapIcon />}
+                  fullWidth
+                >
+                  {isUploading ? 'Importing...' : 'Import Satellite Image'}
+                </Button>
               </Box>
             </TabPanel>
           </Box>
