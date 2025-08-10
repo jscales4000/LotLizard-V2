@@ -93,6 +93,5 @@ _Coming soon: License information_
 
 - Automated commit
 - Description of changes
-- Add Ctrl+mouse wheel for equipment rotation - Add settings toggle for equipment label visibility - Add 1s hover popup to show equipment names when labels are hidden
 
 - to-screen and fixed keyboard handler

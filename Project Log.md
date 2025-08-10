@@ -1,5 +1,10 @@
 # Project Log - LotLizard V2
 
+## Version 0.2.5 - 2025-08-10
+
+Update map (v0.2.5) - Automated commit
+
+
 ## Version 0.2.4 - 2025-08-09
 
 Update common, equipmentService.ts, layout, map, mapStore.ts (v0.2.4) - Automated commit

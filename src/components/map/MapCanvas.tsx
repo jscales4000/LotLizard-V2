@@ -201,14 +201,98 @@ const MapCanvas: React.FC = () => {
         // If Ctrl key is pressed, add/remove from selection
         if (event.ctrlKey) {
           selectMultiple(clickedEquipment.id, true);
+          
+          // Force canvas redraw after selection change
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              // Trigger a re-render by clearing and redrawing
+              setTimeout(() => {
+                if (canvas && ctx) {
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                  ctx.save();
+                  ctx.translate(position.x, position.y);
+                  ctx.scale(scale, scale);
+                  
+                  if (loadedImage) {
+                    ctx.drawImage(loadedImage, 0, 0);
+                  }
+                  
+                  drawActiveCalibrationLine(ctx);
+                  drawCurrentCalibrationLine(ctx);
+                  drawEquipmentItems(ctx);
+                  
+                  ctx.restore();
+                  drawGrid(ctx);
+                }
+              }, 0);
+            }
+          }
         } else {
           // Otherwise replace selection
           selectItem(clickedEquipment.id);
+          
+          // Force canvas redraw after selection
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              // Trigger a re-render by clearing and redrawing
+              setTimeout(() => {
+                if (canvas && ctx) {
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                  ctx.save();
+                  ctx.translate(position.x, position.y);
+                  ctx.scale(scale, scale);
+                  
+                  if (loadedImage) {
+                    ctx.drawImage(loadedImage, 0, 0);
+                  }
+                  
+                  drawActiveCalibrationLine(ctx);
+                  drawCurrentCalibrationLine(ctx);
+                  drawEquipmentItems(ctx);
+                  
+                  ctx.restore();
+                  drawGrid(ctx);
+                }
+              }, 0);
+            }
+          }
         }
       } else {
         // Always deselect when clicking on empty canvas area
         // This is important for UX, especially after using Ctrl+A
         deselectAll();
+        
+        // Force canvas redraw after deselection
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            // Trigger a re-render by clearing and redrawing
+            setTimeout(() => {
+              if (canvas && ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(position.x, position.y);
+                ctx.scale(scale, scale);
+                
+                if (loadedImage) {
+                  ctx.drawImage(loadedImage, 0, 0);
+                }
+                
+                drawActiveCalibrationLine(ctx);
+                drawCurrentCalibrationLine(ctx);
+                drawEquipmentItems(ctx);
+                
+                ctx.restore();
+                drawGrid(ctx);
+              }
+            }, 0);
+          }
+        }
       }
     }
   };
@@ -266,6 +350,34 @@ const MapCanvas: React.FC = () => {
     } else {
       // If clicked empty space, deselect all
       deselectAll();
+      
+      // Force canvas redraw after deselection
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Trigger a re-render by clearing and redrawing
+          setTimeout(() => {
+            if (canvas && ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.save();
+              ctx.translate(position.x, position.y);
+              ctx.scale(scale, scale);
+              
+              if (loadedImage) {
+                ctx.drawImage(loadedImage, 0, 0);
+              }
+              
+              drawActiveCalibrationLine(ctx);
+              drawCurrentCalibrationLine(ctx);
+              drawEquipmentItems(ctx);
+              
+              ctx.restore();
+              drawGrid(ctx);
+            }
+          }, 0);
+        }
+      }
     }
   };
 
@@ -798,6 +910,33 @@ const MapCanvas: React.FC = () => {
       if (event.key.toLowerCase() === 'a' && event.ctrlKey) {
         event.preventDefault();
         selectAll();
+        // Force canvas redraw after selection state changes
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            // Trigger a re-render by clearing and redrawing
+            setTimeout(() => {
+              if (canvas && ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(position.x, position.y);
+                ctx.scale(scale, scale);
+                
+                if (loadedImage) {
+                  ctx.drawImage(loadedImage, 0, 0);
+                }
+                
+                drawActiveCalibrationLine(ctx);
+                drawCurrentCalibrationLine(ctx);
+                drawEquipmentItems(ctx);
+                
+                ctx.restore();
+                drawGrid(ctx);
+              }
+            }, 0);
+          }
+        }
         return;
       }
       
