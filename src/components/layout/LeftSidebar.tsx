@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Drawer,
   List,
@@ -12,14 +12,12 @@ import {
 } from '@mui/material';
 import PanToolIcon from '@mui/icons-material/PanTool';
 import OpenWithIcon from '@mui/icons-material/OpenWith';
-import StraightenIcon from '@mui/icons-material/Straighten';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import GridOnIcon from '@mui/icons-material/GridOn';
 import GridOffIcon from '@mui/icons-material/GridOff';
 import DeleteIcon from '@mui/icons-material/Delete';
-import CropIcon from '@mui/icons-material/Crop';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ImageSearchIcon from '@mui/icons-material/ImageSearch';
@@ -59,8 +57,21 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     zoomOut,
     zoomToFit,
     scale,
-    setIsPanningMode
+    setIsPanningMode,
+    isPanningMode
   } = useMapStore();
+  
+  // Sync with MapCanvas when Tab key is pressed (isPanningMode changes)
+  useEffect(() => {
+    // Update local tool state when the global panning mode changes
+    if (isPanningMode && selectedTool !== 'pan') {
+      setSelectedTool('pan');
+      setIsPanningModeActive(true);
+    } else if (!isPanningMode && selectedTool === 'pan') {
+      setSelectedTool('select');
+      setIsPanningModeActive(false);
+    }
+  }, [isPanningMode, selectedTool]);
 
   const handleToolSelect = (tool: string) => {
     // Interlocked behavior - only one tool can be active at a time
@@ -275,42 +286,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
               >
                 <ListItemIcon sx={{ minWidth: 0 }}>
                   <SquareFootIcon color={isCalibrationMode ? 'warning' : 'inherit'} />
-                </ListItemIcon>
-              </ListItemButton>
-            </ListItem>
-          </Tooltip>
-          
-          <Tooltip title="Measure Distance" placement="right" arrow>
-            <ListItem disablePadding>
-              <ListItemButton 
-                selected={selectedTool === 'measure'}
-                onClick={() => handleToolSelect('measure')}
-                sx={{ 
-                  justifyContent: 'center',
-                  minHeight: 48,
-                  px: 1
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 0 }}>
-                  <StraightenIcon />
-                </ListItemIcon>
-              </ListItemButton>
-            </ListItem>
-          </Tooltip>
-          
-          <Tooltip title="Crop Image" placement="right" arrow>
-            <ListItem disablePadding>
-              <ListItemButton 
-                selected={selectedTool === 'crop'}
-                onClick={() => handleToolSelect('crop')}
-                sx={{ 
-                  justifyContent: 'center',
-                  minHeight: 48,
-                  px: 1
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 0 }}>
-                  <CropIcon />
                 </ListItemIcon>
               </ListItemButton>
             </ListItem>

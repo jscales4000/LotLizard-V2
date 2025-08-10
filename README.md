@@ -92,6 +92,5 @@ _Coming soon: License information_
 ## Recent Features
 
 - Automated commit
-- Description of changes
 
 - to-screen and fixed keyboard handler

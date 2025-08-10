@@ -1,0 +1,50 @@
+﻿            fontSize: '0.75rem'
+          }}
+        >
+          Image loaded â€¢ Scale: {Math.round(scale * 100)}%
+          {false && (
+            <Box sx={{ mt: 0.5, color: 'warning.main' }}>
+              ðŸ”’ Image Locked
+            </Box>
+          )}
+          {activeCalibrationLine && showCalibrationLine && (
+            <Box sx={{ mt: 0.5 }}>
+              Calibrated: {CalibrationService.formatDistance(activeCalibrationLine.realWorldDistance)}
+            </Box>
+          )}
+          <Box sx={{ mt: 0.5, fontSize: '0.75rem', opacity: 0.7 }}>
+            Zoom: {Math.round(scale * 100)}% â€¢ Grid: {showGrid ? 'ON' : 'OFF'}
+          </Box>
+        </Box>
+      )}
+      
+      {isCalibrationMode && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            bgcolor: 'rgba(255, 193, 7, 0.9)',
+            color: 'black',
+            p: 1,
+            borderRadius: 1,
+            fontSize: '0.875rem',
+            fontWeight: 'bold'
+          }}
+        >
+          ðŸ“ Calibration Mode: {currentCalibrationLine?.startPoint ? 'Click to set end point' : 'Click to set start point'}
+        </Box>
+      )}
+      
+      <CalibrationDialog
+        open={calibrationDialogOpen}
+        onClose={handleCalibrationDialogClose}
+        onConfirm={handleCalibrationConfirm}
+        pixelDistance={pendingCalibrationData?.pixelDistance || 0}
+      />
+    </Box>
+  );
+};
+
+export default MapCanvas;

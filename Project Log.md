@@ -1,5 +1,31 @@
 # Project Log - LotLizard V2
 
+## Version 0.2.7 - 2025-08-10
+
+Update layout, map (v0.2.7) - Automated commit
+
+
+## Version 0.2.6 - 2025-08-11
+
+### Map Tool Enhancements & UI Cleanup
+
+#### Changes:
+- **Tab Key Tool Toggling**: Implemented Tab key shortcut to switch between "Move Canvas" and "Select & Move" tools
+- **UI Cleanup**: Removed "Measure Distance" and "Crop Image" buttons from the sidebar for a cleaner interface
+- **Visual Tool Feedback**: Enhanced sidebar to visually indicate the currently active tool when toggling with Tab key
+
+#### Technical Details:
+- Added Tab key handler in MapCanvas.tsx to toggle isPanningMode state
+- Implemented bidirectional sync between MapCanvas and LeftSidebar components using the map store
+- Updated LeftSidebar.tsx to visually reflect the active tool state
+- Removed unused UI elements to simplify the interface
+
+#### Benefits:
+- Improved workflow efficiency with keyboard shortcut for frequently used tools
+- Cleaner UI with fewer rarely-used buttons
+- Better visual feedback for the current tool state
+- Enhanced user experience with synchronized tool state across components
+
 ## Version 0.2.5 - 2025-08-10
 
 Update map (v0.2.5) - Automated commit

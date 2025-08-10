@@ -884,7 +884,17 @@ const MapCanvas: React.FC = () => {
   // Add keyboard handler for equipment movement and shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // No lock check needed - always allow keyboard interactions
+      // Avoid capturing key events when user is typing in input fields
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Tab key to toggle between Select and Pan modes
+      if (event.key === 'Tab') {
+        event.preventDefault(); // Prevent focus change
+        useMapStore.getState().setIsPanningMode(!isPanningMode);
+        return;
+      }
       
       // Escape key to deselect and exit panning mode
       if (event.key === 'Escape') {
