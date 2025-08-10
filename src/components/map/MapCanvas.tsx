@@ -814,8 +814,12 @@ const MapCanvas: React.FC = () => {
     const wheelHandler = (event: WheelEvent) => {
       event.preventDefault();
       
-      // Check if Ctrl key is pressed for rotation
-      if (event.ctrlKey) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      // Check mode and handle accordingly
+      if (!isPanningMode) {
+        // 'Select & Move' mode
         const selectedItems = getSelectedItems();
         if (selectedItems.length > 0) {
           // Get the first selected item for rotation
@@ -851,27 +855,29 @@ const MapCanvas: React.FC = () => {
         }
       }
       
-      // Normal zoom behavior if Ctrl isn't pressed or no items selected
-      // Prevent zooming if image is locked
-      if (imageUrl) {
-        return;
+      // 'Canvas Move' mode or no items selected in 'Select & Move' mode
+      if (isPanningMode || getSelectedItems().length === 0) {
+        // Don't zoom if there's no image
+        if (!imageUrl) {
+          return;
+        }
+        
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        
+        const zoomFactor = event.deltaY > 0 ? 0.95 : 1.05; // Zoom out/in
+        const newScale = Math.max(0.1, Math.min(5, scale * zoomFactor));
+        
+        const canvasMouseX = (mouseX - position.x) / scale;
+        const canvasMouseY = (mouseY - position.y) / scale;
+        
+        const newX = mouseX - canvasMouseX * newScale;
+        const newY = mouseY - canvasMouseY * newScale;
+        
+        setScale(newScale);
+        setPosition({ x: newX, y: newY });
       }
-      
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = event.clientX - rect.left;
-      const mouseY = event.clientY - rect.top;
-      
-      const zoomFactor = event.deltaY > 0 ? 0.95 : 1.05;
-      const newScale = Math.max(0.1, Math.min(5, scale * zoomFactor));
-      
-      const canvasMouseX = (mouseX - position.x) / scale;
-      const canvasMouseY = (mouseY - position.y) / scale;
-      
-      const newX = mouseX - canvasMouseX * newScale;
-      const newY = mouseY - canvasMouseY * newScale;
-      
-      setScale(newScale);
-      setPosition({ x: newX, y: newY });
     };
     
     canvas.addEventListener('wheel', wheelHandler, { passive: false });

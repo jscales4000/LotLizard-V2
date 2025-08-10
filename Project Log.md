@@ -1,5 +1,10 @@
 # Project Log - LotLizard V2
 
+## Version 0.2.8 - 2025-08-10
+
+Update map (v0.2.8) - Automated commit
+
+
 ## Version 0.2.7 - 2025-08-10
 
 Update layout, map (v0.2.7) - Automated commit
