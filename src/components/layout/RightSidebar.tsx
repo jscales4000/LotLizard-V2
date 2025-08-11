@@ -13,19 +13,20 @@ import {
   Paper
 } from '@mui/material';
 import { useEquipmentStore } from '../../stores/equipmentStore';
+import EquipmentList from '../equipment/EquipmentList';
 
 // Width of the right sidebar
 const DRAWER_WIDTH = 280;
 
 const RightSidebar: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'equipment' | 'properties'>('equipment');
+  const [activeTab, setActiveTab] = useState<'equipment' | 'list' | 'properties'>('equipment');
   const equipmentLibrary = useEquipmentStore(state => state.equipmentLibrary);
   const selectedIds = useEquipmentStore(state => state.selectedIds);
   const items = useEquipmentStore(state => state.items);
   // Get the first selected item for properties display
   const selectedItem = selectedIds.length > 0 ? items.find(item => item.id === selectedIds[0]) : undefined;
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: 'equipment' | 'properties') => {
+  const handleTabChange = (event: React.SyntheticEvent, newValue: 'equipment' | 'list' | 'properties') => {
     setActiveTab(newValue);
   };
 
@@ -60,10 +61,15 @@ const RightSidebar: React.FC = () => {
           indicatorColor="primary"
           variant="fullWidth"
         >
-          <Tab value="equipment" label="Equipment" />
+          <Tab value="equipment" label="Library" />
+          <Tab value="list" label="Items" />
           <Tab value="properties" label="Properties" />
         </Tabs>
       </Box>
+      
+      {activeTab === 'list' && (
+        <EquipmentList />
+      )}
       
       {activeTab === 'equipment' && (
         <Box sx={{ overflow: 'auto', p: 1 }}>
@@ -210,7 +216,7 @@ const RightSidebar: React.FC = () => {
                     Real Size
                   </Typography>
                   <Typography variant="body2">
-                    {selectedItem.realWorldWidth.toFixed(1)}×{selectedItem.realWorldHeight.toFixed(1)} m
+                    {selectedItem.realWorldWidth?.toFixed(1) || 'N/A'}×{selectedItem.realWorldHeight?.toFixed(1) || 'N/A'} ft
                   </Typography>
                 </Box>
                 <Box>

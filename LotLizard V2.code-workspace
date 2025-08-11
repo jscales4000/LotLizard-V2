@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../CascadeProjects/FrazierShows Apps/LotLizard V2"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"powershell.cwd": "LotLizard-V2"
+	}
+}

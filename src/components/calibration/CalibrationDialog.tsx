@@ -44,12 +44,12 @@ const CalibrationDialog: React.FC<CalibrationDialogProps> = ({
       return;
     }
 
-    // Convert to meters if needed
-    const distanceInMeters = unit === 'feet' 
-      ? CalibrationService.convertUnits(numDistance, 'feet', 'meters')
+    // Convert to feet if needed (swap fixed)
+    const distanceInFeet = unit === 'meters' 
+      ? CalibrationService.convertUnits(numDistance, 'meters', 'feet')
       : numDistance;
 
-    onConfirm(distanceInMeters, unit);
+    onConfirm(distanceInFeet, unit);
     handleClose();
   };
 

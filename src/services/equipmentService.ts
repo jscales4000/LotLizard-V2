@@ -1,14 +1,17 @@
-// Service for handling equipment operations and real-world dimensions
+// Service for handling equipment operations with shape-based dimensions in feet
 
 export interface EquipmentTemplate {
   id: string;
   name: string;
   category: EquipmentCategory;
-  width: number; // in meters
-  height: number; // in meters
+  shape: 'rectangle' | 'circle';
+  // Dimensions in feet
+  width?: number; // in feet (for rectangles)
+  height?: number; // in feet (for rectangles)
+  radius?: number; // in feet (for circles)
   color: string;
   description?: string;
-  minSpacing?: number; // minimum spacing from other equipment in meters
+  minSpacing?: number; // minimum spacing from other equipment in feet
   isCustom?: boolean; // flag for custom user-created equipment
 }
 
@@ -19,7 +22,7 @@ export class EquipmentService {
   private static readonly STORAGE_KEY = 'lotlizard_custom_equipment';
   
   /**
-   * Standard carnival equipment templates with real-world dimensions
+   * Standard carnival equipment templates with real-world dimensions in feet
    */
   static getEquipmentTemplates(): EquipmentTemplate[] {
     return [
@@ -28,38 +31,44 @@ export class EquipmentService {
         id: 'small-booth',
         name: 'Small Booth',
         category: 'booth',
-        width: 3, // 10 feet
-        height: 3, // 10 feet
+        shape: 'rectangle',
+        width: 10, // 10 feet
+        height: 10, // 10 feet
         color: '#FF6B35',
         description: '10x10 ft vendor booth',
-        minSpacing: 1
+        minSpacing: 3
       },
       {
         id: 'medium-booth',
         name: 'Medium Booth',
         category: 'booth',
-        width: 4.5, // 15 feet
-        height: 4.5, // 15 feet
+        shape: 'rectangle',
+        width: 15, // 15 feet
+        height: 15, // 15 feet
         color: '#FF8E53',
         description: '15x15 ft vendor booth',
-        minSpacing: 1
+        minSpacing: 3
       },
       {
         id: 'large-booth',
         name: 'Large Booth',
         category: 'booth',
-        width: 6, // 20 feet
-        height: 6, // 20 feet
-        color: '#8e24aa',
+        shape: 'rectangle',
+        width: 20, // 20 feet
+        height: 20, // 20 feet
+        color: '#FFB366',
         description: '20x20 ft vendor booth',
-        minSpacing: 1.5
+        minSpacing: 4
       },
+      
+      // Calibration
       {
         id: 'calibration-square',
         name: 'Calibration Square (30×30 ft)',
         category: 'utility',
-        width: 9.144, // 30 feet in meters
-        height: 9.144, // 30 feet in meters
+        shape: 'rectangle',
+        width: 30, // 30 feet
+        height: 30, // 30 feet
         color: '#ff5722',
         minSpacing: 2
       },
@@ -69,21 +78,33 @@ export class EquipmentService {
         id: 'small-ride',
         name: 'Small Ride',
         category: 'ride',
-        width: 9, // 30 feet
-        height: 9, // 30 feet
+        shape: 'rectangle',
+        width: 30, // 30 feet
+        height: 30, // 30 feet
         color: '#E74C3C',
         description: '30x30 ft ride (Tilt-a-Whirl, etc.)',
-        minSpacing: 3
+        minSpacing: 10
       },
       {
         id: 'large-ride',
         name: 'Large Ride',
         category: 'ride',
-        width: 15, // 50 feet
-        height: 15, // 50 feet
+        shape: 'rectangle',
+        width: 50, // 50 feet
+        height: 50, // 50 feet
         color: '#C0392B',
         description: '50x50 ft ride (Ferris Wheel, etc.)',
-        minSpacing: 5
+        minSpacing: 15
+      },
+      {
+        id: 'circular-ride',
+        name: 'Circular Ride',
+        category: 'ride',
+        shape: 'circle',
+        radius: 25, // 25 feet radius (50 ft diameter)
+        color: '#8E44AD',
+        description: '50 ft diameter circular ride',
+        minSpacing: 15
       },
       
       // Games
@@ -91,21 +112,23 @@ export class EquipmentService {
         id: 'game-booth',
         name: 'Game Booth',
         category: 'game',
-        width: 2.5, // 8 feet
-        height: 4, // 13 feet
+        shape: 'rectangle',
+        width: 8, // 8 feet
+        height: 13, // 13 feet
         color: '#3498DB',
         description: '8x13 ft game booth',
-        minSpacing: 0.5
+        minSpacing: 2
       },
       {
         id: 'ring-toss',
         name: 'Ring Toss',
         category: 'game',
-        width: 3, // 10 feet
-        height: 2, // 6 feet
+        shape: 'rectangle',
+        width: 10, // 10 feet
+        height: 6, // 6 feet
         color: '#5DADE2',
         description: '10x6 ft ring toss game',
-        minSpacing: 1
+        minSpacing: 3
       },
       
       // Food
@@ -113,21 +136,23 @@ export class EquipmentService {
         id: 'food-truck',
         name: 'Food Truck',
         category: 'food',
-        width: 7, // 23 feet
-        height: 2.5, // 8 feet
+        shape: 'rectangle',
+        width: 23, // 23 feet
+        height: 8, // 8 feet
         color: '#F39C12',
         description: '23x8 ft food truck',
-        minSpacing: 2
+        minSpacing: 6
       },
       {
         id: 'concession-stand',
         name: 'Concession Stand',
         category: 'food',
-        width: 4, // 13 feet
-        height: 3, // 10 feet
+        shape: 'rectangle',
+        width: 13, // 13 feet
+        height: 10, // 10 feet
         color: '#F7DC6F',
         description: '13x10 ft concession stand',
-        minSpacing: 1.5
+        minSpacing: 4
       },
       
       // Utilities
@@ -135,21 +160,23 @@ export class EquipmentService {
         id: 'restroom',
         name: 'Portable Restroom',
         category: 'utility',
-        width: 1.2, // 4 feet
-        height: 1.2, // 4 feet
+        shape: 'rectangle',
+        width: 4, // 4 feet
+        height: 4, // 4 feet
         color: '#95A5A6',
         description: '4x4 ft portable restroom',
-        minSpacing: 0.5
+        minSpacing: 2
       },
       {
         id: 'generator',
         name: 'Generator',
         category: 'utility',
-        width: 2, // 6.5 feet
-        height: 1.5, // 5 feet
+        shape: 'rectangle',
+        width: 6.5, // 6.5 feet
+        height: 5, // 5 feet
         color: '#7F8C8D',
         description: '6.5x5 ft generator',
-        minSpacing: 3 // Safety spacing for generator
+        minSpacing: 10 // Safety spacing for generator
       }
     ];
   }
@@ -158,60 +185,69 @@ export class EquipmentService {
    * Convert real-world dimensions to pixel dimensions
    */
   static convertToPixelDimensions(
-    widthMeters: number, 
-    heightMeters: number, 
-    pixelsPerMeter: number
+    widthFeet: number, 
+    heightFeet: number, 
+    pixelsPerFoot: number
   ): { width: number; height: number } {
     return {
-      width: widthMeters * pixelsPerMeter,
-      height: heightMeters * pixelsPerMeter
+      width: widthFeet * pixelsPerFoot,
+      height: heightFeet * pixelsPerFoot
     };
   }
 
   /**
-   * Convert pixel dimensions to real-world dimensions
+   * Convert circular dimensions to pixel dimensions
    */
-  static convertToRealWorldDimensions(
-    widthPixels: number, 
-    heightPixels: number, 
-    pixelsPerMeter: number
-  ): { width: number; height: number } {
+  static convertCircleToPixelDimensions(
+    radiusFeet: number,
+    pixelsPerFoot: number
+  ): { width: number; height: number; radius: number } {
+    const pixelRadius = radiusFeet * pixelsPerFoot;
     return {
-      width: widthPixels / pixelsPerMeter,
-      height: heightPixels / pixelsPerMeter
+      width: pixelRadius * 2,
+      height: pixelRadius * 2,
+      radius: pixelRadius
     };
   }
 
   /**
-   * Check if equipment placement is valid (no overlaps, minimum spacing)
+   * Get pixel dimensions for any equipment template
+   */
+  static getPixelDimensions(
+    template: EquipmentTemplate,
+    pixelsPerFoot: number
+  ): { width: number; height: number; radius?: number } {
+    if (template.shape === 'circle' && template.radius) {
+      return this.convertCircleToPixelDimensions(template.radius, pixelsPerFoot);
+    } else if (template.shape === 'rectangle' && template.width && template.height) {
+      return this.convertToPixelDimensions(template.width, template.height, pixelsPerFoot);
+    }
+    
+    // Fallback for invalid templates
+    return { width: 30 * pixelsPerFoot, height: 30 * pixelsPerFoot };
+  }
+
+  /**
+   * Validate equipment placement
    */
   static validatePlacement(
-    newEquipment: { x: number; y: number; width: number; height: number; minSpacing?: number },
-    existingEquipment: Array<{ x: number; y: number; width: number; height: number; minSpacing?: number }>,
-    pixelsPerMeter: number
+    newItem: { x: number; y: number; width: number; height: number; minSpacing?: number },
+    existingItems: Array<{ x: number; y: number; width: number; height: number; minSpacing?: number }>,
+    pixelsPerFoot: number
   ): { valid: boolean; error?: string } {
-    const spacing = (newEquipment.minSpacing || 1) * pixelsPerMeter;
+    const minSpacingPixels = (newItem.minSpacing || 0) * pixelsPerFoot;
     
-    for (const existing of existingEquipment) {
-      const existingSpacing = (existing.minSpacing || 1) * pixelsPerMeter;
-      const requiredSpacing = Math.max(spacing, existingSpacing);
+    for (const item of existingItems) {
+      const distance = Math.sqrt(
+        Math.pow(newItem.x - item.x, 2) + Math.pow(newItem.y - item.y, 2)
+      );
       
-      // Check if rectangles overlap with spacing
-      const newLeft = newEquipment.x - requiredSpacing;
-      const newRight = newEquipment.x + newEquipment.width + requiredSpacing;
-      const newTop = newEquipment.y - requiredSpacing;
-      const newBottom = newEquipment.y + newEquipment.height + requiredSpacing;
+      const requiredDistance = minSpacingPixels + ((item.minSpacing || 0) * pixelsPerFoot);
       
-      const existingLeft = existing.x;
-      const existingRight = existing.x + existing.width;
-      const existingTop = existing.y;
-      const existingBottom = existing.y + existing.height;
-      
-      if (newLeft < existingRight && newRight > existingLeft &&
-          newTop < existingBottom && newBottom > existingTop) {
+      if (distance < requiredDistance) {
         return {
           valid: false,
-          error: `Equipment placement violates minimum spacing requirements (${newEquipment.minSpacing || 1}m)`
+          error: `Equipment too close to existing item. Minimum spacing: ${newItem.minSpacing || 0} ft`
         };
       }
     }
@@ -220,132 +256,69 @@ export class EquipmentService {
   }
 
   /**
-   * Get equipment template by ID
-   */
-  static getEquipmentTemplate(id: string): EquipmentTemplate | undefined {
-    return this.getAllTemplates().find(template => template.id === id);
-  }
-
-  /**
-   * Get equipment templates by category
-   */
-  static getEquipmentByCategory(category: EquipmentCategory): EquipmentTemplate[] {
-    return this.getAllTemplates().filter(template => template.category === category);
-  }
-
-  /**
    * Format dimensions for display
    */
-  static formatDimensions(widthMeters: number, heightMeters: number, unit: 'meters' | 'feet' = 'meters'): string {
-    if (unit === 'feet') {
-      const widthFeet = Math.round(widthMeters * 3.28084);
-      const heightFeet = Math.round(heightMeters * 3.28084);
-      return `${widthFeet}×${heightFeet} ft`;
-    }
-    
-    return `${widthMeters.toFixed(1)}×${heightMeters.toFixed(1)} m`;
+  static formatDimensions(width: number, height: number, unit: 'feet' | 'meters' = 'feet'): string {
+    const unitSymbol = unit === 'feet' ? 'ft' : 'm';
+    return `${width.toFixed(1)} × ${height.toFixed(1)} ${unitSymbol}`;
   }
 
   /**
-   * Save a custom equipment template
+   * Save custom equipment to localStorage
    */
-  static saveCustomTemplate(template: Omit<EquipmentTemplate, 'id' | 'isCustom'>): EquipmentTemplate {
-    // Generate a unique ID for the new template
-    const id = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
-    // Create the full template with the custom flag
-    const newTemplate: EquipmentTemplate = {
-      ...template,
-      id,
-      isCustom: true,
-    };
-    
-    // Get existing custom templates from local storage
-    const existingTemplates = this.getCustomTemplates();
-    
-    // Add the new template
-    const updatedTemplates = [...existingTemplates, newTemplate];
-    
-    // Save back to local storage
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedTemplates));
-    
-    return newTemplate;
-  }
-
-  /**
-   * Update an existing custom equipment template
-   */
-  static updateCustomTemplate(id: string, updates: Partial<Omit<EquipmentTemplate, 'id' | 'isCustom'>>): EquipmentTemplate | null {
-    // Get existing custom templates from local storage
-    const customTemplates = this.getCustomTemplates();
-    
-    // Find the template to update
-    const templateIndex = customTemplates.findIndex(template => template.id === id);
-    
-    if (templateIndex === -1) {
-      return null; // Template not found
-    }
-    
-    // Update the template
-    const updatedTemplate: EquipmentTemplate = {
-      ...customTemplates[templateIndex],
-      ...updates
-    };
-    
-    // Replace in the array
-    customTemplates[templateIndex] = updatedTemplate;
-    
-    // Save back to local storage
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(customTemplates));
-    
-    return updatedTemplate;
-  }
-
-  /**
-   * Delete a custom equipment template
-   */
-  static deleteCustomTemplate(id: string): boolean {
-    // Get existing custom templates from local storage
-    const customTemplates = this.getCustomTemplates();
-    
-    // Filter out the template to delete
-    const filteredTemplates = customTemplates.filter(template => template.id !== id);
-    
-    if (filteredTemplates.length === customTemplates.length) {
-      return false; // Template not found
-    }
-    
-    // Save back to local storage
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredTemplates));
-    
-    return true;
-  }
-
-  /**
-   * Get all custom equipment templates
-   */
-  static getCustomTemplates(): EquipmentTemplate[] {
+  static saveCustomEquipment(equipment: EquipmentTemplate[]): void {
     try {
-      const customTemplatesString = localStorage.getItem(this.STORAGE_KEY);
-      if (!customTemplatesString) {
-        return [];
-      }
-      
-      const customTemplates = JSON.parse(customTemplatesString);
-      return Array.isArray(customTemplates) ? customTemplates : [];
-    } catch (e) {
-      console.error('Failed to load custom equipment templates:', e);
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(equipment));
+    } catch (error) {
+      console.error('Failed to save custom equipment:', error);
+    }
+  }
+
+  /**
+   * Load custom equipment from localStorage
+   */
+  static loadCustomEquipment(): EquipmentTemplate[] {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Failed to load custom equipment:', error);
       return [];
     }
   }
 
   /**
-   * Get all equipment templates (built-in and custom)
+   * Get all equipment templates (standard + custom)
    */
-  static getAllTemplates(): EquipmentTemplate[] {
-    const standardTemplates = this.getEquipmentTemplates();
-    const customTemplates = this.getCustomTemplates();
+  static getAllEquipmentTemplates(): EquipmentTemplate[] {
+    return [
+      ...this.getEquipmentTemplates(),
+      ...this.loadCustomEquipment()
+    ];
+  }
+
+  /**
+   * Add or update equipment template
+   */
+  static saveEquipmentTemplate(template: EquipmentTemplate): void {
+    const customEquipment = this.loadCustomEquipment();
+    const existingIndex = customEquipment.findIndex(item => item.id === template.id);
     
-    return [...standardTemplates, ...customTemplates];
+    if (existingIndex >= 0) {
+      customEquipment[existingIndex] = { ...template, isCustom: true };
+    } else {
+      customEquipment.push({ ...template, isCustom: true });
+    }
+    
+    this.saveCustomEquipment(customEquipment);
+  }
+
+  /**
+   * Delete custom equipment template
+   */
+  static deleteEquipmentTemplate(templateId: string): void {
+    const customEquipment = this.loadCustomEquipment();
+    const filtered = customEquipment.filter(item => item.id !== templateId);
+    this.saveCustomEquipment(filtered);
   }
 }

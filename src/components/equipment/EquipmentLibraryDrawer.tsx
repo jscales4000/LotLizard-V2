@@ -93,7 +93,7 @@ const EquipmentLibraryDrawer: React.FC<EquipmentLibraryDrawerProps> = ({
   };
   
   const handleDeleteEquipment = (id: string) => {
-    EquipmentService.deleteCustomTemplate(id);
+    EquipmentService.deleteEquipmentTemplate(id);
     handleMenuClose();
     // Refresh equipment list
     loadAllTemplates();
@@ -101,9 +101,11 @@ const EquipmentLibraryDrawer: React.FC<EquipmentLibraryDrawerProps> = ({
   
   const handleCustomFormSubmit = (template: Omit<EquipmentTemplate, 'id' | 'isCustom'>) => {
     if (editingTemplate) {
-      EquipmentService.updateCustomTemplate(editingTemplate.id, template);
+      // For updating, create a template with the existing ID
+      EquipmentService.saveEquipmentTemplate({ ...template, id: editingTemplate.id, isCustom: true });
     } else {
-      EquipmentService.saveCustomTemplate(template);
+      // For new templates, create with a new ID
+      EquipmentService.saveEquipmentTemplate({ ...template, id: `custom-${Date.now()}`, isCustom: true });
     }
     setShowCustomForm(false);
     setEditingTemplate(undefined);
@@ -118,7 +120,7 @@ const EquipmentLibraryDrawer: React.FC<EquipmentLibraryDrawerProps> = ({
   
   // Function to load all equipment templates (built-in + custom)
   const loadAllTemplates = () => {
-    const allTemplates = EquipmentService.getAllTemplates();
+    const allTemplates = EquipmentService.getAllEquipmentTemplates();
     useEquipmentStore.setState({ equipmentLibrary: allTemplates });
   };
   
@@ -253,7 +255,7 @@ const EquipmentLibraryDrawer: React.FC<EquipmentLibraryDrawerProps> = ({
             primary={item.name} 
             secondary={
               <>
-                {item.description || EquipmentService.formatDimensions(item.width, item.height, 'feet')}
+                {item.description || EquipmentService.formatDimensions(item.width || 0, item.height || 0, 'feet')}
                 {isCustom && <Chip size="small" label="Custom" sx={{ ml: 1, height: 16 }} />}
               </>
             }

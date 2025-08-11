@@ -7,15 +7,18 @@ export interface EquipmentItem {
   name: string;
   x: number;
   y: number;
-  width: number; // in pixels
-  height: number; // in pixels
+  width: number; // in pixels (for rectangles)
+  height: number; // in pixels (for rectangles)
   rotation: number;
   color: string;
   type: string;
   templateId: string;
-  realWorldWidth: number; // in meters
-  realWorldHeight: number; // in meters
-  minSpacing?: number; // in meters
+  shape: 'rectangle' | 'circle';
+  // Real-world dimensions in feet
+  realWorldWidth?: number; // in feet (for rectangles)
+  realWorldHeight?: number; // in feet (for rectangles)
+  realWorldRadius?: number; // in feet (for circles)
+  minSpacing?: number; // in feet
 }
 
 // Define the state structure
@@ -27,8 +30,9 @@ interface EquipmentState {
   
   // Actions
   addItem: (item: Omit<EquipmentItem, 'id'>) => void;
-  addItemFromTemplate: (templateId: string, x: number, y: number, pixelsPerMeter: number) => string | null;
+  addItemFromTemplate: (templateId: string, x: number, y: number, pixelsPerFoot: number) => string | null;
   updateItem: (id: string, updates: Partial<EquipmentItem>) => void;
+  updateItemWithDimensions: (id: string, updates: Partial<EquipmentItem>, pixelsPerFoot: number) => void;
   removeItem: (id: string) => void;
   removeSelectedItems: () => void;
   selectItem: (id: string | null) => void;
@@ -39,7 +43,7 @@ interface EquipmentState {
   moveSelectedItems: (deltaX: number, deltaY: number) => void;
   rotateItem: (id: string, rotation: number) => void;
   resizeItem: (id: string, width: number, height: number) => void;
-  updateItemDimensions: (pixelsPerMeter: number) => void;
+  updateItemDimensions: (pixelsPerFoot: number) => void;
   copySelectedItems: () => void;
   pasteItems: (x?: number, y?: number) => void;
   clearAll: () => void;
@@ -61,17 +65,14 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     items: [...state.items, { ...item, id: `item-${Date.now()}` }]
   })),
   
-  addItemFromTemplate: (templateId, x, y, pixelsPerMeter) => {
-    const template = EquipmentService.getEquipmentTemplate(templateId);
-    if (!template) return null;
+  addItemFromTemplate: (templateId, x, y, pixelsPerFoot) => {
+    const template = get().equipmentLibrary.find(t => t.id === templateId);
+    if (!template) {
+      console.error('Template not found:', templateId);
+      return null;
+    }
     
-    const pixelDimensions = EquipmentService.convertToPixelDimensions(
-      template.width,
-      template.height,
-      pixelsPerMeter
-    );
-    
-    const state = get();
+    const pixelDimensions = EquipmentService.getPixelDimensions(template, pixelsPerFoot);
     
     // Validate placement
     const validation = EquipmentService.validatePlacement(
@@ -82,14 +83,14 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
         height: pixelDimensions.height,
         minSpacing: template.minSpacing
       },
-      state.items.map(item => ({
+      get().items.map(item => ({
         x: item.x,
         y: item.y,
         width: item.width,
         height: item.height,
         minSpacing: item.minSpacing
       })),
-      pixelsPerMeter
+      pixelsPerFoot
     );
     
     if (!validation.valid) {
@@ -108,8 +109,10 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
       color: template.color,
       type: template.category,
       templateId: template.id,
+      shape: template.shape,
       realWorldWidth: template.width,
       realWorldHeight: template.height,
+      realWorldRadius: template.radius,
       minSpacing: template.minSpacing
     };
     
@@ -123,6 +126,38 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     items: state.items.map(item => 
       item.id === id ? { ...item, ...updates } : item
     )
+  })),
+  
+  updateItemWithDimensions: (id: string, updates: Partial<EquipmentItem>, pixelsPerFoot: number) => set((state) => ({
+    items: state.items.map(item => {
+      if (item.id !== id) return item;
+      
+      const updatedItem = { ...item, ...updates };
+      
+      // Recalculate pixel dimensions if real-world dimensions changed
+      if (updates.realWorldWidth || updates.realWorldHeight || updates.realWorldRadius || updates.shape) {
+        let pixelDimensions;
+        if (updatedItem.shape === 'circle' && updatedItem.realWorldRadius) {
+          pixelDimensions = EquipmentService.convertCircleToPixelDimensions(
+            updatedItem.realWorldRadius,
+            pixelsPerFoot
+          );
+        } else if (updatedItem.realWorldWidth && updatedItem.realWorldHeight) {
+          pixelDimensions = EquipmentService.convertToPixelDimensions(
+            updatedItem.realWorldWidth,
+            updatedItem.realWorldHeight,
+            pixelsPerFoot
+          );
+        }
+        
+        if (pixelDimensions) {
+          updatedItem.width = pixelDimensions.width;
+          updatedItem.height = pixelDimensions.height;
+        }
+      }
+      
+      return updatedItem;
+    })
   })),
   removeItem: (id) => set((state) => ({
     items: state.items.filter(item => item.id !== id),
@@ -181,13 +216,31 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     )
   })),
   
-  updateItemDimensions: (pixelsPerMeter) => set((state) => ({
+  updateItemDimensions: (pixelsPerFoot) => set((state) => ({
     items: state.items.map(item => {
-      const pixelDimensions = EquipmentService.convertToPixelDimensions(
-        item.realWorldWidth,
-        item.realWorldHeight,
-        pixelsPerMeter
-      );
+      // Skip items without valid dimensions
+      if (item.shape === 'rectangle' && (!item.realWorldWidth || !item.realWorldHeight)) {
+        return item;
+      }
+      if (item.shape === 'circle' && !item.realWorldRadius) {
+        return item;
+      }
+      
+      let pixelDimensions;
+      if (item.shape === 'circle' && item.realWorldRadius) {
+        pixelDimensions = EquipmentService.convertCircleToPixelDimensions(
+          item.realWorldRadius,
+          pixelsPerFoot
+        );
+      } else if (item.realWorldWidth && item.realWorldHeight) {
+        pixelDimensions = EquipmentService.convertToPixelDimensions(
+          item.realWorldWidth,
+          item.realWorldHeight,
+          pixelsPerFoot
+        );
+      } else {
+        return item;
+      }
       return {
         ...item,
         width: pixelDimensions.width,

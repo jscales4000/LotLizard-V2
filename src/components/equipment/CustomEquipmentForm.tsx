@@ -82,7 +82,8 @@ const CustomEquipmentForm: React.FC<CustomEquipmentFormProps> = ({
       height,
       color,
       description: description || undefined,
-      minSpacing
+      minSpacing,
+      shape: 'rectangle' // Default to rectangle for custom equipment
     });
     onClose();
   };
