@@ -13,6 +13,12 @@ export interface EquipmentTemplate {
   description?: string;
   minSpacing?: number; // minimum spacing from other equipment in feet
   isCustom?: boolean; // flag for custom user-created equipment
+  // Default clearance zone parameters in feet
+  clearanceLeft?: number; // in feet (for rectangles)
+  clearanceRight?: number; // in feet (for rectangles)
+  clearanceTop?: number; // in feet (for rectangles)
+  clearanceBottom?: number; // in feet (for rectangles)
+  clearanceRadius?: number; // in feet (for circles)
 }
 
 // Type for equipment categories

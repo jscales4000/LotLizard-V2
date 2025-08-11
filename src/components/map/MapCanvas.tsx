@@ -130,10 +130,20 @@ const MapCanvas: React.FC = () => {
       const rotatedX = relX * Math.cos(angleRadians) - relY * Math.sin(angleRadians);
       const rotatedY = relX * Math.sin(angleRadians) + relY * Math.cos(angleRadians);
       
-      // Check if the rotated point is inside the item (as if it wasn't rotated)
-      if (rotatedX >= -item.width / 2 && rotatedX <= item.width / 2 &&
-          rotatedY >= -item.height / 2 && rotatedY <= item.height / 2) {
-        return item;
+      // Check if the rotated point is inside the item based on its shape
+      if (item.shape === 'circle') {
+        // For circles, check if point is within the radius
+        const radius = Math.min(item.width, item.height) / 2;
+        const distance = Math.sqrt(rotatedX * rotatedX + rotatedY * rotatedY);
+        if (distance <= radius) {
+          return item;
+        }
+      } else {
+        // For rectangles, check if point is within the bounds
+        if (rotatedX >= -item.width / 2 && rotatedX <= item.width / 2 &&
+            rotatedY >= -item.height / 2 && rotatedY <= item.height / 2) {
+          return item;
+        }
       }
     }
     return null;
@@ -692,9 +702,72 @@ const MapCanvas: React.FC = () => {
         ctx.rotate(item.rotation * Math.PI / 180); // Convert degrees to radians
       }
       
-      // Draw the rectangle centered at the origin
+      // Draw clearance zone first (if any clearance is defined)
+      const hasRectClearance = (item.clearanceLeft || 0) > 0 || (item.clearanceRight || 0) > 0 || 
+                               (item.clearanceTop || 0) > 0 || (item.clearanceBottom || 0) > 0;
+      const hasCircleClearance = (item.clearanceRadius || 0) > 0;
+      
+      if ((item.shape === 'rectangle' && hasRectClearance) || (item.shape === 'circle' && hasCircleClearance)) {
+        // Calculate pixelsPerFoot from calibration square or use default (same logic as EquipmentEditor)
+        const calculatePixelsPerFoot = (): number => {
+          const calibrationSquare = equipmentItems.find(item => item.templateId === 'calibration-square');
+          if (calibrationSquare && calibrationSquare.realWorldWidth) {
+            return calibrationSquare.width / calibrationSquare.realWorldWidth;
+          }
+          // Default: assume 30 pixels per foot if no calibration available
+          return 30;
+        };
+        const currentPixelsPerFoot = calculatePixelsPerFoot();
+        
+        ctx.globalAlpha = 0.5; // 50% transparency for clearance zone
+        ctx.fillStyle = item.color;
+        ctx.strokeStyle = selected ? '#ff0000' : '#666666';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]); // Dashed line for clearance zone
+        
+        ctx.beginPath();
+        if (item.shape === 'circle' && hasCircleClearance) {
+          // For circles, draw clearance as a larger circle
+          const baseRadius = Math.min(item.width, item.height) / 2;
+          const clearanceRadius = baseRadius + (item.clearanceRadius || 0) * currentPixelsPerFoot;
+          ctx.arc(0, 0, clearanceRadius, 0, Math.PI * 2);
+        } else if (item.shape === 'rectangle' && hasRectClearance) {
+          // For rectangles, draw clearance as a larger rectangle
+          const clearanceLeft = (item.clearanceLeft || 0) * currentPixelsPerFoot;
+          const clearanceRight = (item.clearanceRight || 0) * currentPixelsPerFoot;
+          const clearanceTop = (item.clearanceTop || 0) * currentPixelsPerFoot;
+          const clearanceBottom = (item.clearanceBottom || 0) * currentPixelsPerFoot;
+          
+          const clearanceWidth = item.width + clearanceLeft + clearanceRight;
+          const clearanceHeight = item.height + clearanceTop + clearanceBottom;
+          const clearanceX = -item.width / 2 - clearanceLeft;
+          const clearanceY = -item.height / 2 - clearanceTop;
+          
+          ctx.rect(clearanceX, clearanceY, clearanceWidth, clearanceHeight);
+        }
+        
+        ctx.fill();
+        ctx.stroke();
+        
+        // Reset canvas properties for main shape
+        ctx.globalAlpha = 1.0;
+        ctx.setLineDash([]); // Reset to solid line
+      }
+      
+      // Draw the main equipment shape
+      ctx.fillStyle = selected ? '#ffff00' : item.color;
+      ctx.strokeStyle = selected ? '#ff0000' : '#000000';
+      ctx.lineWidth = selected ? 2 : 1;
+      
       ctx.beginPath();
-      ctx.rect(-item.width / 2, -item.height / 2, item.width, item.height);
+      if (item.shape === 'circle') {
+        // For circles, use the smaller dimension as the radius to fit within the bounding box
+        const radius = Math.min(item.width, item.height) / 2;
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      } else {
+        // Default to rectangle for 'rectangle' shape or undefined shape
+        ctx.rect(-item.width / 2, -item.height / 2, item.width, item.height);
+      }
       ctx.fill();
       ctx.stroke();
       

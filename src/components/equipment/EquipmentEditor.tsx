@@ -48,7 +48,13 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
     realWorldWidth: item.realWorldWidth,
     realWorldHeight: item.realWorldHeight,
     realWorldRadius: item.realWorldRadius,
-    color: item.color
+    color: item.color,
+    // Clearance parameters
+    clearanceLeft: item.clearanceLeft || 0,
+    clearanceRight: item.clearanceRight || 0,
+    clearanceTop: item.clearanceTop || 0,
+    clearanceBottom: item.clearanceBottom || 0,
+    clearanceRadius: item.clearanceRadius || 0
   });
 
   // Track if there are unsaved changes
@@ -62,7 +68,12 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
       editedItem.realWorldWidth !== item.realWorldWidth ||
       editedItem.realWorldHeight !== item.realWorldHeight ||
       editedItem.realWorldRadius !== item.realWorldRadius ||
-      editedItem.color !== item.color;
+      editedItem.color !== item.color ||
+      editedItem.clearanceLeft !== (item.clearanceLeft || 0) ||
+      editedItem.clearanceRight !== (item.clearanceRight || 0) ||
+      editedItem.clearanceTop !== (item.clearanceTop || 0) ||
+      editedItem.clearanceBottom !== (item.clearanceBottom || 0) ||
+      editedItem.clearanceRadius !== (item.clearanceRadius || 0);
     
     setHasChanges(changed);
   }, [editedItem, item]);
@@ -118,7 +129,13 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
       realWorldWidth: item.realWorldWidth,
       realWorldHeight: item.realWorldHeight,
       realWorldRadius: item.realWorldRadius,
-      color: item.color
+      color: item.color,
+      // Reset clearance parameters
+      clearanceLeft: item.clearanceLeft || 0,
+      clearanceRight: item.clearanceRight || 0,
+      clearanceTop: item.clearanceTop || 0,
+      clearanceBottom: item.clearanceBottom || 0,
+      clearanceRadius: item.clearanceRadius || 0
     });
     setHasChanges(false);
   };
@@ -262,6 +279,79 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
             </Typography>
           </Box>
         </Grid>
+
+        {/* Clearance Zone Section */}
+        <Grid item xs={12}>
+          <Divider sx={{ my: 1 }} />
+          <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
+            Clearance Zone (ft)
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+            Additional safety clearance around the equipment
+          </Typography>
+        </Grid>
+
+        {/* Clearance fields based on shape */}
+        {editedItem.shape === 'rectangle' ? (
+          <>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Left (ft)"
+                type="number"
+                value={editedItem.clearanceLeft || ''}
+                onChange={(e) => handleFieldChange('clearanceLeft', parseFloat(e.target.value) || 0)}
+                inputProps={{ min: 0, step: 0.1 }}
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Right (ft)"
+                type="number"
+                value={editedItem.clearanceRight || ''}
+                onChange={(e) => handleFieldChange('clearanceRight', parseFloat(e.target.value) || 0)}
+                inputProps={{ min: 0, step: 0.1 }}
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Top (ft)"
+                type="number"
+                value={editedItem.clearanceTop || ''}
+                onChange={(e) => handleFieldChange('clearanceTop', parseFloat(e.target.value) || 0)}
+                inputProps={{ min: 0, step: 0.1 }}
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Bottom (ft)"
+                type="number"
+                value={editedItem.clearanceBottom || ''}
+                onChange={(e) => handleFieldChange('clearanceBottom', parseFloat(e.target.value) || 0)}
+                inputProps={{ min: 0, step: 0.1 }}
+                size="small"
+              />
+            </Grid>
+          </>
+        ) : (
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Clearance Radius (ft)"
+              type="number"
+              value={editedItem.clearanceRadius || ''}
+              onChange={(e) => handleFieldChange('clearanceRadius', parseFloat(e.target.value) || 0)}
+              inputProps={{ min: 0, step: 0.1 }}
+              size="small"
+            />
+          </Grid>
+        )}
       </Grid>
 
       {hasChanges && (

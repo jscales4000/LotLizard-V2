@@ -19,6 +19,12 @@ export interface EquipmentItem {
   realWorldHeight?: number; // in feet (for rectangles)
   realWorldRadius?: number; // in feet (for circles)
   minSpacing?: number; // in feet
+  // Clearance zone parameters in feet
+  clearanceLeft?: number; // in feet (for rectangles)
+  clearanceRight?: number; // in feet (for rectangles)
+  clearanceTop?: number; // in feet (for rectangles)
+  clearanceBottom?: number; // in feet (for rectangles)
+  clearanceRadius?: number; // in feet (for circles)
 }
 
 // Define the state structure
@@ -113,7 +119,13 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
       realWorldWidth: template.width,
       realWorldHeight: template.height,
       realWorldRadius: template.radius,
-      minSpacing: template.minSpacing
+      minSpacing: template.minSpacing,
+      // Copy clearance parameters from template
+      clearanceLeft: template.clearanceLeft,
+      clearanceRight: template.clearanceRight,
+      clearanceTop: template.clearanceTop,
+      clearanceBottom: template.clearanceBottom,
+      clearanceRadius: template.clearanceRadius
     };
     
     set((state) => ({
