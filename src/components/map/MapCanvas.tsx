@@ -782,7 +782,6 @@ const MapCanvas: React.FC = () => {
   }, [showGrid, pixelsPerMeter, scale, position, gridSpacing, gridColor]);
 
   // Draw on canvas
-  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -805,8 +804,7 @@ const MapCanvas: React.FC = () => {
     
     ctx.restore();
     drawGrid(ctx);
-  }, [loadedImage, scale, position, drawGrid, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawEquipmentItems]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  });
 
   // Add wheel event listener
   useEffect(() => {
