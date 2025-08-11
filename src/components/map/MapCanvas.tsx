@@ -683,7 +683,8 @@ const MapCanvas: React.FC = () => {
   const [hoverPosition, setHoverPosition] = useState<{x: number, y: number} | null>(null);
   
   const drawEquipmentItems = React.useCallback((ctx: CanvasRenderingContext2D) => {
-    equipmentItems.forEach(item => {
+    // Only draw visible items (visible is true by default if not set)
+    equipmentItems.filter(item => item.visible !== false).forEach(item => {
       const selected = isSelected(item.id);
       ctx.fillStyle = selected ? '#ffff00' : item.color;
       ctx.strokeStyle = selected ? '#ff0000' : '#000000';

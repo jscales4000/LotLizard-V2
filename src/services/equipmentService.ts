@@ -19,6 +19,11 @@ export interface EquipmentTemplate {
   clearanceTop?: number; // in feet (for rectangles)
   clearanceBottom?: number; // in feet (for rectangles)
   clearanceRadius?: number; // in feet (for circles)
+  // Additional equipment properties
+  capacity?: number; // number of people
+  weight?: number; // in lbs
+  verticalHeight?: number; // in feet
+  turnAroundTime?: number; // in minutes
 }
 
 // Type for equipment categories

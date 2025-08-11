@@ -25,6 +25,13 @@ export interface EquipmentItem {
   clearanceTop?: number; // in feet (for rectangles)
   clearanceBottom?: number; // in feet (for rectangles)
   clearanceRadius?: number; // in feet (for circles)
+  // Additional equipment properties
+  capacity?: number; // number of people
+  weight?: number; // in lbs
+  verticalHeight?: number; // in feet
+  turnAroundTime?: number; // in minutes
+  // Visibility control
+  visible?: boolean; // whether item is visible on canvas (default: true)
 }
 
 // Define the state structure
@@ -50,6 +57,7 @@ interface EquipmentState {
   rotateItem: (id: string, rotation: number) => void;
   resizeItem: (id: string, width: number, height: number) => void;
   updateItemDimensions: (pixelsPerFoot: number) => void;
+  toggleItemVisibility: (id: string) => void;
   copySelectedItems: () => void;
   pasteItems: (x?: number, y?: number) => void;
   clearAll: () => void;
@@ -125,7 +133,12 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
       clearanceRight: template.clearanceRight,
       clearanceTop: template.clearanceTop,
       clearanceBottom: template.clearanceBottom,
-      clearanceRadius: template.clearanceRadius
+      clearanceRadius: template.clearanceRadius,
+      // Copy additional equipment properties from template
+      capacity: template.capacity,
+      weight: template.weight,
+      verticalHeight: template.verticalHeight,
+      turnAroundTime: template.turnAroundTime
     };
     
     set((state) => ({
@@ -260,6 +273,13 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
       };
     })
   })),
+  
+  toggleItemVisibility: (id: string) => set((state) => ({
+    items: state.items.map(item =>
+      item.id === id ? { ...item, visible: !(item.visible ?? true) } : item
+    )
+  })),
+  
   clearAll: () => set({ items: [], selectedIds: [], clipboardItems: [] }),
   
   copySelectedItems: () => {

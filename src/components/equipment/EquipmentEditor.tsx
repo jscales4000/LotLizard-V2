@@ -16,6 +16,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import UndoIcon from '@mui/icons-material/Undo';
+import CloseIcon from '@mui/icons-material/Close';
 import { useEquipmentStore } from '../../stores/equipmentStore';
 import { EquipmentItem } from '../../stores/equipmentStore';
 
@@ -60,6 +61,30 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
   // Track if there are unsaved changes
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Reset editor state when item prop changes (for switching between items)
+  useEffect(() => {
+    setEditedItem({
+      name: item.name,
+      shape: item.shape || 'rectangle',
+      realWorldWidth: item.realWorldWidth,
+      realWorldHeight: item.realWorldHeight,
+      realWorldRadius: item.realWorldRadius,
+      color: item.color,
+      // Clearance parameters
+      clearanceLeft: item.clearanceLeft || 0,
+      clearanceRight: item.clearanceRight || 0,
+      clearanceTop: item.clearanceTop || 0,
+      clearanceBottom: item.clearanceBottom || 0,
+      clearanceRadius: item.clearanceRadius || 0,
+      // Additional equipment properties
+      capacity: item.capacity || 0,
+      weight: item.weight || 0,
+      verticalHeight: item.verticalHeight || 0,
+      turnAroundTime: item.turnAroundTime || 0
+    });
+    setHasChanges(false);
+  }, [item]); // Reset when item changes
+
   useEffect(() => {
     // Check if current edited values differ from original item
     const changed = 
@@ -73,7 +98,12 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
       editedItem.clearanceRight !== (item.clearanceRight || 0) ||
       editedItem.clearanceTop !== (item.clearanceTop || 0) ||
       editedItem.clearanceBottom !== (item.clearanceBottom || 0) ||
-      editedItem.clearanceRadius !== (item.clearanceRadius || 0);
+      editedItem.clearanceRadius !== (item.clearanceRadius || 0) ||
+      // Check for changes in new equipment properties
+      editedItem.capacity !== (item.capacity || 0) ||
+      editedItem.weight !== (item.weight || 0) ||
+      editedItem.verticalHeight !== (item.verticalHeight || 0) ||
+      editedItem.turnAroundTime !== (item.turnAroundTime || 0);
     
     setHasChanges(changed);
   }, [editedItem, item]);
@@ -151,7 +181,15 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
     <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Edit Equipment</Typography>
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Tooltip title="Close editor">
+            <IconButton 
+              onClick={() => onClose?.()} 
+              size="small"
+            >
+              <CloseIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Reset changes">
             <span>
               <IconButton 
@@ -352,6 +390,61 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
             />
           </Grid>
         )}
+      </Grid>
+
+      {/* Additional Properties Section */}
+      <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold' }}>
+        Equipment Properties
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Capacity (people)"
+            type="number"
+            value={editedItem.capacity || ''}
+            onChange={(e) => handleFieldChange('capacity', parseInt(e.target.value) || 0)}
+            inputProps={{ min: 0, step: 1 }}
+            size="small"
+            helperText="Number of people"
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Weight (lbs)"
+            type="number"
+            value={editedItem.weight || ''}
+            onChange={(e) => handleFieldChange('weight', parseFloat(e.target.value) || 0)}
+            inputProps={{ min: 0, step: 1 }}
+            size="small"
+            helperText="Weight in pounds"
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Vertical Height (ft)"
+            type="number"
+            value={editedItem.verticalHeight || ''}
+            onChange={(e) => handleFieldChange('verticalHeight', parseFloat(e.target.value) || 0)}
+            inputProps={{ min: 0, step: 0.1 }}
+            size="small"
+            helperText="Height in feet"
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Turn Around Time (min)"
+            type="number"
+            value={editedItem.turnAroundTime || ''}
+            onChange={(e) => handleFieldChange('turnAroundTime', parseFloat(e.target.value) || 0)}
+            inputProps={{ min: 0, step: 0.1 }}
+            size="small"
+            helperText="Time in minutes"
+          />
+        </Grid>
       </Grid>
 
       {hasChanges && (

@@ -16,6 +16,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEquipmentStore } from '../../stores/equipmentStore';
 import EquipmentEditor from './EquipmentEditor';
 
@@ -23,9 +24,18 @@ const EquipmentList: React.FC = () => {
   const items = useEquipmentStore(state => state.items);
   const selectedIds = useEquipmentStore(state => state.selectedIds);
   const selectItem = useEquipmentStore(state => state.selectItem);
+  const toggleItemVisibility = useEquipmentStore(state => state.toggleItemVisibility);
   
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['All Items']));
+
+  // Auto-switch to editing when an item is selected from canvas while editor is open
+  React.useEffect(() => {
+    if (editingItemId && selectedIds.length === 1 && selectedIds[0] !== editingItemId) {
+      // If editor is open and a different single item is selected, switch to editing that item
+      setEditingItemId(selectedIds[0]);
+    }
+  }, [selectedIds, editingItemId]);
 
   // Group items by category (using type as category since category doesn't exist on EquipmentItem)
   const groupedItems = items.reduce((acc, item) => {
@@ -49,6 +59,10 @@ const EquipmentList: React.FC = () => {
 
   const handleItemSelect = (itemId: string) => {
     selectItem(itemId);
+    // If editor is open, switch to editing the selected item
+    if (editingItemId) {
+      setEditingItemId(itemId);
+    }
   };
 
   const handleEditItem = (itemId: string, event: React.MouseEvent) => {
@@ -91,6 +105,7 @@ const EquipmentList: React.FC = () => {
             const editingItem = items.find(item => item.id === editingItemId);
             return editingItem ? (
               <EquipmentEditor 
+                key={editingItem.id}
                 item={editingItem} 
                 onClose={handleCloseEditor}
               />
@@ -184,16 +199,20 @@ const EquipmentList: React.FC = () => {
                         </Box>
                         
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Tooltip title="Focus on item">
+                          <Tooltip title={item.visible !== false ? "Hide item" : "Show item"}>
                             <IconButton
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleItemSelect(item.id);
-                                // TODO: Could add camera focus functionality here
+                                toggleItemVisibility(item.id);
                               }}
+                              color={item.visible !== false ? 'default' : 'warning'}
                             >
-                              <VisibilityIcon fontSize="small" />
+                              {item.visible !== false ? (
+                                <VisibilityIcon fontSize="small" />
+                              ) : (
+                                <VisibilityOffIcon fontSize="small" />
+                              )}
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Edit item">

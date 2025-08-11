@@ -239,13 +239,135 @@ const RightSidebar: React.FC = () => {
                 )}
                 <Box>
                   <Typography variant="caption" display="block" color="text.secondary">
-                    Position
+                    Shape
                   </Typography>
                   <Typography variant="body2">
-                    {Math.round(selectedItem.x)}, {Math.round(selectedItem.y)}
+                    {selectedItem.shape || 'rectangle'}
                   </Typography>
                 </Box>
               </Box>
+              
+              {/* Equipment Properties Section */}
+              <Divider sx={{ my: 1 }} />
+              
+              <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
+                Equipment Details
+              </Typography>
+              
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                {selectedItem.capacity && (
+                  <Box>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      Capacity
+                    </Typography>
+                    <Typography variant="body2">
+                      {selectedItem.capacity} people
+                    </Typography>
+                  </Box>
+                )}
+                {selectedItem.weight && (
+                  <Box>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      Weight
+                    </Typography>
+                    <Typography variant="body2">
+                      {selectedItem.weight.toLocaleString()} lbs
+                    </Typography>
+                  </Box>
+                )}
+                {selectedItem.verticalHeight && (
+                  <Box>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      Vertical Height
+                    </Typography>
+                    <Typography variant="body2">
+                      {selectedItem.verticalHeight} ft
+                    </Typography>
+                  </Box>
+                )}
+                {selectedItem.turnAroundTime && (
+                  <Box>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      Turn Around Time
+                    </Typography>
+                    <Typography variant="body2">
+                      {selectedItem.turnAroundTime} min
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+              
+              {/* Clearance Zone Section */}
+              {((selectedItem.shape === 'rectangle' && 
+                 ((selectedItem.clearanceLeft || 0) > 0 || (selectedItem.clearanceRight || 0) > 0 || 
+                  (selectedItem.clearanceTop || 0) > 0 || (selectedItem.clearanceBottom || 0) > 0)) ||
+                (selectedItem.shape === 'circle' && (selectedItem.clearanceRadius || 0) > 0)) && (
+                <>
+                  <Divider sx={{ my: 1 }} />
+                  
+                  <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
+                    Clearance Zone
+                  </Typography>
+                  
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                    {selectedItem.shape === 'rectangle' ? (
+                      <>
+                        {(selectedItem.clearanceLeft || 0) > 0 && (
+                          <Box>
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Left Clearance
+                            </Typography>
+                            <Typography variant="body2">
+                              {selectedItem.clearanceLeft} ft
+                            </Typography>
+                          </Box>
+                        )}
+                        {(selectedItem.clearanceRight || 0) > 0 && (
+                          <Box>
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Right Clearance
+                            </Typography>
+                            <Typography variant="body2">
+                              {selectedItem.clearanceRight} ft
+                            </Typography>
+                          </Box>
+                        )}
+                        {(selectedItem.clearanceTop || 0) > 0 && (
+                          <Box>
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Top Clearance
+                            </Typography>
+                            <Typography variant="body2">
+                              {selectedItem.clearanceTop} ft
+                            </Typography>
+                          </Box>
+                        )}
+                        {(selectedItem.clearanceBottom || 0) > 0 && (
+                          <Box>
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Bottom Clearance
+                            </Typography>
+                            <Typography variant="body2">
+                              {selectedItem.clearanceBottom} ft
+                            </Typography>
+                          </Box>
+                        )}
+                      </>
+                    ) : (
+                      (selectedItem.clearanceRadius || 0) > 0 && (
+                        <Box>
+                          <Typography variant="caption" display="block" color="text.secondary">
+                            Clearance Radius
+                          </Typography>
+                          <Typography variant="body2">
+                            {selectedItem.clearanceRadius} ft
+                          </Typography>
+                        </Box>
+                      )
+                    )}
+                  </Box>
+                </>
+              )}
             </Paper>
           )}
         </Box>
