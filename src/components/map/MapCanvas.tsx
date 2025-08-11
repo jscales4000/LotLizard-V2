@@ -1060,7 +1060,7 @@ const MapCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode]);
+  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawEquipmentItems, drawGrid, loadedImage]);
 
   return (
     <Box 
