@@ -922,6 +922,37 @@ const MapCanvas: React.FC = () => {
         return;
       }
       
+      // Ctrl+Z for undo
+      if (event.key.toLowerCase() === 'z' && event.ctrlKey && !event.shiftKey) {
+        event.preventDefault();
+        // TODO: Implement undo functionality using store
+        console.log('Undo action');
+        // This will require adding undo/redo functionality to the store
+        // For MVP, we can show a notification that this will be available soon
+        return;
+      }
+      
+      // Ctrl+Y or Ctrl+Shift+Z for redo
+      if ((event.key.toLowerCase() === 'y' && event.ctrlKey) || 
+          (event.key.toLowerCase() === 'z' && event.ctrlKey && event.shiftKey)) {
+        event.preventDefault();
+        // TODO: Implement redo functionality using store
+        console.log('Redo action');
+        // This will require adding undo/redo functionality to the store
+        // For MVP, we can show a notification that this will be available soon
+        return;
+      }
+      
+      // Ctrl+S to save project
+      if (event.key.toLowerCase() === 's' && event.ctrlKey) {
+        event.preventDefault();
+        // TODO: Implement project saving functionality
+        console.log('Save project');
+        // This is a placeholder for future integration
+        // For MVP, we can show a notification that this will be available soon
+        return;
+      }
+      
       // Ctrl+A to select all
       if (event.key.toLowerCase() === 'a' && event.ctrlKey) {
         event.preventDefault();
