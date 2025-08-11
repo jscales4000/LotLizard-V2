@@ -19,7 +19,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ImageIcon from '@mui/icons-material/Image';
 import MapIcon from '@mui/icons-material/Map';
-import SearchIcon from '@mui/icons-material/Search';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';

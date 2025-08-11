@@ -782,6 +782,7 @@ const MapCanvas: React.FC = () => {
   }, [showGrid, pixelsPerMeter, scale, position, gridSpacing, gridColor]);
 
   // Draw on canvas
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -885,7 +886,7 @@ const MapCanvas: React.FC = () => {
     return () => {
       canvas.removeEventListener('wheel', wheelHandler);
     };
-  }, [scale, position, setScale, setPosition, imageUrl, getSelectedItems, rotateItem]);
+  }, [scale, position, setScale, setPosition, imageUrl, getSelectedItems, rotateItem, isPanningMode]);
 
   // Add keyboard handler for equipment movement and shortcuts
   useEffect(() => {
