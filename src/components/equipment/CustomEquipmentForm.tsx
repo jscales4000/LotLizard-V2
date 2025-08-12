@@ -37,7 +37,7 @@ const CustomEquipmentForm: React.FC<CustomEquipmentFormProps> = ({
 }) => {
   const [name, setName] = useState(editingTemplate?.name || '');
   const [category, setCategory] = useState<EquipmentCategory>(
-    editingTemplate?.category || 'booth'
+    editingTemplate?.category || 'equipment'
   );
   const [width, setWidth] = useState(editingTemplate?.width || 3); // Default 3 meters
   const [height, setHeight] = useState(editingTemplate?.height || 3); // Default 3 meters
@@ -81,9 +81,13 @@ const CustomEquipmentForm: React.FC<CustomEquipmentFormProps> = ({
       width,
       height,
       color,
-      description: description || undefined,
+      description: description || '',
       minSpacing,
-      shape: 'rectangle' // Default to rectangle for custom equipment
+      shape: 'rectangle' as const, // Default to rectangle for custom equipment
+      capacity: 0, // Default values for required properties
+      weight: 0,
+      verticalHeight: 0,
+      turnAroundTime: 0
     });
     onClose();
   };

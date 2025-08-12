@@ -255,7 +255,7 @@ const EquipmentLibraryDrawer: React.FC<EquipmentLibraryDrawerProps> = ({
             primary={item.name} 
             secondary={
               <>
-                {item.description || EquipmentService.formatDimensions(item.width || 0, item.height || 0, 'feet')}
+                {item.description || EquipmentService.formatEquipmentDimensions(item, 'ft')}
                 {isCustom && <Chip size="small" label="Custom" sx={{ ml: 1, height: 16 }} />}
               </>
             }

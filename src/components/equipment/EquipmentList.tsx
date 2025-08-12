@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import {
   Box,
+  Typography,
   List,
   ListItem,
-  ListItemText,
   ListItemButton,
-  Typography,
-  Collapse,
-  IconButton,
-  Chip,
+  ListItemText,
   Paper,
+  IconButton,
+  Collapse,
   Tooltip
 } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -37,9 +36,27 @@ const EquipmentList: React.FC = () => {
     }
   }, [selectedIds, editingItemId]);
 
-  // Group items by category (using type as category since category doesn't exist on EquipmentItem)
+  // Format category names for display
+  const formatCategoryName = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+      'mega-rides': 'Mega Rides',
+      'rides': 'Rides',
+      'kiddy-rides': 'Kiddy Rides',
+      'food': 'Food',
+      'games': 'Games',
+      'equipment': 'Equipment',
+      'office': 'Office',
+      'home': 'Home',
+      'bunks': 'Bunks',
+      'utility': 'Utility',
+      'custom': 'Custom'
+    };
+    return categoryMap[category] || category;
+  };
+
+  // Group items by category
   const groupedItems = items.reduce((acc, item) => {
-    const category = item.type || 'Uncategorized';
+    const category = item.category || item.type || 'Uncategorized';
     if (!acc[category]) {
       acc[category] = [];
     }
@@ -132,20 +149,9 @@ const EquipmentList: React.FC = () => {
                 mb: 0.5
               }}
             >
-              <ListItemText
-                primary={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="caption" sx={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
-                      {category}
-                    </Typography>
-                    <Chip 
-                      label={categoryItems.length} 
-                      size="small" 
-                      variant="outlined"
-                      sx={{ height: 16, fontSize: '0.7rem' }}
-                    />
-                  </Box>
-                }
+              <ListItemText 
+                primary={`${formatCategoryName(category)} (${categoryItems.length})`}
+                primaryTypographyProps={{ variant: 'body2', fontWeight: 'medium' }}
               />
               {expandedCategories.has(category) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             </ListItemButton>

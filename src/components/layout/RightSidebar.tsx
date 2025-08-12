@@ -10,16 +10,22 @@ import {
   ListItemButton,
   Typography,
   Divider,
-  Paper
+  Paper,
+
 } from '@mui/material';
 import { useEquipmentStore } from '../../stores/equipmentStore';
+import { EquipmentTemplate } from '../../services/equipmentService';
 import EquipmentList from '../equipment/EquipmentList';
+import { EquipmentLibraryManager } from '../equipment/EquipmentLibraryManager';
+import { LibraryTemplateEditor } from '../equipment/LibraryTemplateEditor';
 
 // Width of the right sidebar
-const DRAWER_WIDTH = 280;
+const DRAWER_WIDTH = 372;
 
 const RightSidebar: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'equipment' | 'list' | 'properties'>('equipment');
+  const [selectedLibraryTemplate, setSelectedLibraryTemplate] = useState<EquipmentTemplate | null>(null);
+  const [libraryEditorOpen, setLibraryEditorOpen] = useState(false);
   const equipmentLibrary = useEquipmentStore(state => state.equipmentLibrary);
   const selectedIds = useEquipmentStore(state => state.selectedIds);
   const items = useEquipmentStore(state => state.items);
@@ -28,6 +34,24 @@ const RightSidebar: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: 'equipment' | 'list' | 'properties') => {
     setActiveTab(newValue);
+  };
+
+  // Format category names for display
+  const formatCategoryName = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+      'mega-rides': 'Mega Rides',
+      'rides': 'Rides',
+      'kiddy-rides': 'Kiddy Rides',
+      'food': 'Food',
+      'games': 'Games',
+      'equipment': 'Equipment',
+      'office': 'Office',
+      'home': 'Home',
+      'bunks': 'Bunks',
+      'utility': 'Utility',
+      'custom': 'Custom'
+    };
+    return categoryMap[category] || category;
   };
 
   // Group equipment by category
@@ -78,14 +102,13 @@ const RightSidebar: React.FC = () => {
               <Typography 
                 variant="subtitle2" 
                 sx={{ 
-                  textTransform: 'uppercase', 
                   fontWeight: 'bold',
                   px: 1, 
                   py: 0.5,
                   bgcolor: 'background.default'
                 }}
               >
-                {category}
+                {formatCategoryName(category)} ({items.length})
               </Typography>
               <List dense disablePadding>
                 {(items as any[]).map((item: any) => (
@@ -104,15 +127,19 @@ const RightSidebar: React.FC = () => {
                         }));
                         e.dataTransfer.effectAllowed = 'copy';
                       }}
+                      onClick={() => {
+                        setSelectedLibraryTemplate(item);
+                        setLibraryEditorOpen(true);
+                      }}
                       sx={{ 
                         display: 'flex', 
                         alignItems: 'center',
                         borderLeft: `4px solid ${item.color}`,
                         pl: 1,
-                        cursor: 'grab',
-                        '&:active': {
-                          cursor: 'grabbing'
-                        }
+                        '&:hover': {
+                          bgcolor: 'action.hover'
+                        },
+                        bgcolor: selectedLibraryTemplate?.id === item.id ? 'action.selected' : 'transparent'
                       }}
                     >
                       <Box
@@ -138,7 +165,13 @@ const RightSidebar: React.FC = () => {
                       </Box>
                       <ListItemText 
                         primary={item.name} 
-                        secondary={`${item.width}x${item.height}`} 
+                        secondary={
+                          item.shape === 'circle' && item.radius 
+                            ? `⌀${item.radius * 2} ft (radius: ${item.radius} ft)`
+                            : item.width && item.height 
+                            ? `${item.width} × ${item.height} ft`
+                            : 'Dimensions not specified'
+                        } 
                       />
                     </ListItemButton>
                   </ListItem>
@@ -146,8 +179,43 @@ const RightSidebar: React.FC = () => {
               </List>
             </Box>
           ))}
+          
+          {/* Equipment Library Management */}
+          <EquipmentLibraryManager 
+            templates={equipmentLibrary}
+            onTemplatesUpdate={(updatedTemplates: EquipmentTemplate[]) => {
+              // Update the equipment library in the store
+              useEquipmentStore.getState().updateEquipmentLibrary(updatedTemplates);
+            }}
+          />
         </Box>
       )}
+      
+      {/* Library Template Editor Drawer */}
+      <LibraryTemplateEditor
+        open={libraryEditorOpen}
+        template={selectedLibraryTemplate}
+        onClose={() => {
+          setLibraryEditorOpen(false);
+          setSelectedLibraryTemplate(null);
+        }}
+        onSave={(updatedTemplate: EquipmentTemplate) => {
+          // Update the template in the store
+          useEquipmentStore.getState().updateTemplate(updatedTemplate.id, updatedTemplate);
+          // Update the equipment library
+          useEquipmentStore.getState().updateEquipmentLibrary(
+            equipmentLibrary.map(template => 
+              template.id === updatedTemplate.id ? updatedTemplate : template
+            )
+          );
+        }}
+        onDelete={(templateId: string) => {
+          // Remove template from library (only for custom templates)
+          useEquipmentStore.getState().updateEquipmentLibrary(
+            equipmentLibrary.filter(template => template.id !== templateId)
+          );
+        }}
+      />
       
       {activeTab === 'properties' && (
         <Box sx={{ overflow: 'auto', p: 2 }}>

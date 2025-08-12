@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { EquipmentService, EquipmentTemplate } from '../services/equipmentService';
+import { EquipmentService, EquipmentTemplate, EquipmentCategory } from '../services/equipmentService';
 
 // Define equipment item structure
 export interface EquipmentItem {
   id: string;
   name: string;
+  category?: EquipmentCategory;
   x: number;
   y: number;
   width: number; // in pixels (for rectangles)
@@ -46,6 +47,8 @@ interface EquipmentState {
   addItemFromTemplate: (templateId: string, x: number, y: number, pixelsPerFoot: number) => string | null;
   updateItem: (id: string, updates: Partial<EquipmentItem>) => void;
   updateItemWithDimensions: (id: string, updates: Partial<EquipmentItem>, pixelsPerFoot: number) => void;
+  updateTemplate: (templateId: string, updates: Partial<EquipmentTemplate>) => void;
+  updateEquipmentLibrary: (templates: EquipmentTemplate[]) => void;
   removeItem: (id: string) => void;
   removeSelectedItems: () => void;
   selectItem: (id: string | null) => void;
@@ -113,8 +116,9 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     }
     
     const newItem: EquipmentItem = {
-      id: `item-${Date.now()}`,
+      id: `equipment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: template.name,
+      category: template.category,
       x,
       y,
       width: pixelDimensions.width,
@@ -184,6 +188,13 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
       return updatedItem;
     })
   })),
+  
+  updateTemplate: (templateId, updates) => set((state) => ({
+    equipmentLibrary: state.equipmentLibrary.map(template => 
+      template.id === templateId ? { ...template, ...updates } : template
+    )
+  })),
+  
   removeItem: (id) => set((state) => ({
     items: state.items.filter(item => item.id !== id),
     selectedIds: state.selectedIds.filter(selectedId => selectedId !== id)
@@ -335,6 +346,8 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     const state = get();
     return state.items.filter(item => state.selectedIds.includes(item.id));
   },
+  
+  updateEquipmentLibrary: (templates: EquipmentTemplate[]) => set({ equipmentLibrary: templates }),
   
   isSelected: (id) => {
     return get().selectedIds.includes(id);

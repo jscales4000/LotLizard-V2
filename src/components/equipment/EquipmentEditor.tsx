@@ -19,6 +19,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import CloseIcon from '@mui/icons-material/Close';
 import { useEquipmentStore } from '../../stores/equipmentStore';
 import { EquipmentItem } from '../../stores/equipmentStore';
+import { EquipmentCategory } from '../../services/equipmentService';
 
 interface EquipmentEditorProps {
   item: EquipmentItem;
@@ -27,6 +28,7 @@ interface EquipmentEditorProps {
 
 const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
   const updateItemWithDimensions = useEquipmentStore(state => state.updateItemWithDimensions);
+  const updateTemplate = useEquipmentStore(state => state.updateTemplate);
   const removeItem = useEquipmentStore(state => state.removeItem);
   const items = useEquipmentStore(state => state.items);
   
@@ -45,6 +47,7 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
   // Local state for editing
   const [editedItem, setEditedItem] = useState<Partial<EquipmentItem>>({
     name: item.name,
+    category: item.category || 'rides',
     shape: item.shape || 'rectangle',
     realWorldWidth: item.realWorldWidth,
     realWorldHeight: item.realWorldHeight,
@@ -65,6 +68,7 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
   useEffect(() => {
     setEditedItem({
       name: item.name,
+      category: item.category || 'rides',
       shape: item.shape || 'rectangle',
       realWorldWidth: item.realWorldWidth,
       realWorldHeight: item.realWorldHeight,
@@ -89,6 +93,7 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
     // Check if current edited values differ from original item
     const changed = 
       editedItem.name !== item.name ||
+      editedItem.category !== (item.category || 'rides') ||
       editedItem.shape !== (item.shape || 'rectangle') ||
       editedItem.realWorldWidth !== item.realWorldWidth ||
       editedItem.realWorldHeight !== item.realWorldHeight ||
@@ -149,6 +154,50 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
 
     // Update the item in the store with dimension recalculation
     updateItemWithDimensions(item.id, editedItem, pixelsPerFoot);
+    
+    // Update the template in the library to reflect any changes
+    // This ensures the Equipment Library tab shows updated shape, dimensions, and category
+    if (item.templateId) {
+      const templateUpdates: any = {};
+      
+      // Update category if changed
+      if (editedItem.category && editedItem.category !== (item.category || 'rides')) {
+        templateUpdates.category = editedItem.category;
+      }
+      
+      // Update shape and dimensions if changed
+      if (editedItem.shape !== (item.shape || 'rectangle')) {
+        templateUpdates.shape = editedItem.shape;
+      }
+      
+      if (editedItem.shape === 'rectangle') {
+        if (editedItem.realWorldWidth !== item.realWorldWidth) {
+          templateUpdates.width = editedItem.realWorldWidth;
+        }
+        if (editedItem.realWorldHeight !== item.realWorldHeight) {
+          templateUpdates.height = editedItem.realWorldHeight;
+        }
+        // Clear radius if switching to rectangle
+        if (item.shape === 'circle') {
+          templateUpdates.radius = undefined;
+        }
+      } else if (editedItem.shape === 'circle') {
+        if (editedItem.realWorldRadius !== item.realWorldRadius) {
+          templateUpdates.radius = editedItem.realWorldRadius;
+        }
+        // Clear width/height if switching to circle
+        if (item.shape === 'rectangle') {
+          templateUpdates.width = undefined;
+          templateUpdates.height = undefined;
+        }
+      }
+      
+      // Apply updates if any changes were made
+      if (Object.keys(templateUpdates).length > 0) {
+        updateTemplate(item.templateId, templateUpdates);
+      }
+    }
+    
     setHasChanges(false);
   };
 
@@ -239,7 +288,29 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
           />
         </Grid>
 
-
+        {/* Category Selection */}
+        <Grid item xs={12}>
+          <FormControl fullWidth size="small">
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={editedItem.category || 'rides'}
+              label="Category"
+              onChange={(e) => handleFieldChange('category', e.target.value as EquipmentCategory)}
+            >
+              <MenuItem value="mega-rides">Mega Rides</MenuItem>
+              <MenuItem value="rides">Rides</MenuItem>
+              <MenuItem value="kiddy-rides">Kiddy Rides</MenuItem>
+              <MenuItem value="food">Food</MenuItem>
+              <MenuItem value="games">Games</MenuItem>
+              <MenuItem value="equipment">Equipment</MenuItem>
+              <MenuItem value="office">Office</MenuItem>
+              <MenuItem value="home">Home</MenuItem>
+              <MenuItem value="bunks">Bunks</MenuItem>
+              <MenuItem value="utility">Utility</MenuItem>
+              <MenuItem value="custom">Custom</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
 
         {/* Shape Selection */}
         <Grid item xs={12}>
