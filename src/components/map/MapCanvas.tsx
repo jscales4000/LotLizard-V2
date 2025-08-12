@@ -709,16 +709,9 @@ const MapCanvas: React.FC = () => {
       const hasCircleClearance = (item.clearanceRadius || 0) > 0;
       
       if ((item.shape === 'rectangle' && hasRectClearance) || (item.shape === 'circle' && hasCircleClearance)) {
-        // Calculate pixelsPerFoot from calibration square or use default (same logic as EquipmentEditor)
-        const calculatePixelsPerFoot = (): number => {
-          const calibrationSquare = equipmentItems.find(item => item.templateId === 'calibration-square');
-          if (calibrationSquare && calibrationSquare.realWorldWidth) {
-            return calibrationSquare.width / calibrationSquare.realWorldWidth;
-          }
-          // Default: assume 30 pixels per foot if no calibration available
-          return 30;
-        };
-        const currentPixelsPerFoot = calculatePixelsPerFoot();
+        // Get the scaling factor from the equipment item itself
+        // The clearance values are already in feet and need to be scaled to match the item's pixel dimensions
+        const pixelScale = item.width / (item.realWorldWidth || 30); // Use item's own scale factor
         
         ctx.globalAlpha = 0.5; // 50% transparency for clearance zone
         ctx.fillStyle = item.color;
@@ -730,14 +723,14 @@ const MapCanvas: React.FC = () => {
         if (item.shape === 'circle' && hasCircleClearance) {
           // For circles, draw clearance as a larger circle
           const baseRadius = Math.min(item.width, item.height) / 2;
-          const clearanceRadius = baseRadius + (item.clearanceRadius || 0) * currentPixelsPerFoot;
+          const clearanceRadius = baseRadius + (item.clearanceRadius || 0) * pixelScale;
           ctx.arc(0, 0, clearanceRadius, 0, Math.PI * 2);
         } else if (item.shape === 'rectangle' && hasRectClearance) {
           // For rectangles, draw clearance as a larger rectangle
-          const clearanceLeft = (item.clearanceLeft || 0) * currentPixelsPerFoot;
-          const clearanceRight = (item.clearanceRight || 0) * currentPixelsPerFoot;
-          const clearanceTop = (item.clearanceTop || 0) * currentPixelsPerFoot;
-          const clearanceBottom = (item.clearanceBottom || 0) * currentPixelsPerFoot;
+          const clearanceLeft = (item.clearanceLeft || 0) * pixelScale;
+          const clearanceRight = (item.clearanceRight || 0) * pixelScale;
+          const clearanceTop = (item.clearanceTop || 0) * pixelScale;
+          const clearanceBottom = (item.clearanceBottom || 0) * pixelScale;
           
           const clearanceWidth = item.width + clearanceLeft + clearanceRight;
           const clearanceHeight = item.height + clearanceTop + clearanceBottom;
