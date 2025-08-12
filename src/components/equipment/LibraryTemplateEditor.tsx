@@ -153,21 +153,25 @@ export const LibraryTemplateEditor: React.FC<LibraryTemplateEditorProps> = ({
 
   if (!editedTemplate) return null;
 
+  // Don't render anything if not open - this prevents z-index conflicts
+  if (!open) return null;
+
   return (
     <Box
       sx={{
         position: 'fixed',
         top: 0,
-        left: open ? `calc(100vw - ${372 + DRAWER_WIDTH}px)` : '100vw', // Start completely off-screen right, slide to left of sidebar when open
+        right: '372px', // Position directly to the left of the sidebar
         width: DRAWER_WIDTH,
         height: '100vh',
         backgroundColor: 'background.paper',
         borderLeft: 1,
         borderColor: 'divider',
-        zIndex: 800, // Lower z-index to be behind sidebar
-        transition: 'left 0.3s ease-in-out',
-        boxShadow: open ? 3 : 0,
-        overflow: 'hidden'
+        zIndex: 999, // Just below sidebar but high enough to be visible
+        boxShadow: 3,
+        overflow: 'hidden',
+        transform: open ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.3s ease-in-out'
       }}
     >
       <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>

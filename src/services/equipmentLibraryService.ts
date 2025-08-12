@@ -109,16 +109,11 @@ export class EquipmentLibraryService {
             case 'append':
               // Add imported templates to existing ones, handling ID conflicts
               finalTemplates = [...currentTemplates];
-              for (const importedTemplate of importedTemplates) {
-                // Check for ID conflicts and resolve them
-                let newId = importedTemplate.id;
-                let counter = 1;
-                while (finalTemplates.some(t => t.id === newId)) {
-                  newId = `${importedTemplate.id}-imported-${counter}`;
-                  counter++;
-                }
-                finalTemplates.push({ ...importedTemplate, id: newId });
-              }
+              importedTemplates.forEach(importedTemplate => {
+                // Create a unique ID for this template
+                const uniqueId = this.generateUniqueId(importedTemplate.id, finalTemplates);
+                finalTemplates.push({ ...importedTemplate, id: uniqueId });
+              });
               break;
               
             case 'merge':
@@ -217,6 +212,22 @@ export class EquipmentLibraryService {
     } catch (error) {
       throw new Error('Invalid backup data format');
     }
+  }
+
+  /**
+   * Generate a unique ID for imported templates to avoid conflicts
+   */
+  private static generateUniqueId(baseId: string, existingTemplates: EquipmentTemplate[]): string {
+    const existingIds = new Set(existingTemplates.map(t => t.id));
+    let newId = baseId;
+    let counter = 1;
+    
+    while (existingIds.has(newId)) {
+      newId = `${baseId}-imported-${counter}`;
+      counter++;
+    }
+    
+    return newId;
   }
 
   /**

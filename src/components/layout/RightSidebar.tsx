@@ -70,10 +70,12 @@ const RightSidebar: React.FC = () => {
       sx={{
         width: DRAWER_WIDTH,
         flexShrink: 0,
+        zIndex: 1300, // High z-index to stay above template editor panel
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box',
           borderLeft: '1px solid rgba(255, 255, 255, 0.12)',
+          zIndex: 1300, // Ensure paper also has high z-index
         },
       }}
     >
