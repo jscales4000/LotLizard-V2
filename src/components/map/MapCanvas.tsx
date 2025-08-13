@@ -28,7 +28,8 @@ const MapCanvas: React.FC = () => {
     showCalibrationLine,
     gridSpacing,
     gridColor,
-    showEquipmentLabels
+    showEquipmentLabels,
+    showClearanceZones
   } = useMapStore();
   
   const { 
@@ -171,14 +172,15 @@ const MapCanvas: React.FC = () => {
       const handleX = centerX + Math.cos(angleRadians) * handleDistance;
       const handleY = centerY + Math.sin(angleRadians) * handleDistance;
       
-      console.log('Handle position for item:', item.id, {
-        centerX, 
-        centerY, 
-        handleX, 
-        handleY, 
-        rotation: item.rotation, 
-        angleRadians
-      });
+      // Debug logging for rotation handle position (commented out to reduce console noise)
+      // console.log('Handle position for item:', item.id, {
+      //   centerX, 
+      //   centerY, 
+      //   handleX, 
+      //   handleY, 
+      //   rotation: item.rotation, 
+      //   angleRadians
+      // });
       
       // Check if point is within handle radius (8px)
       const distanceSquared = Math.pow(x - handleX, 2) + Math.pow(y - handleY, 2);
@@ -703,12 +705,12 @@ const MapCanvas: React.FC = () => {
         ctx.rotate(item.rotation * Math.PI / 180); // Convert degrees to radians
       }
       
-      // Draw clearance zone first (if any clearance is defined)
+      // Draw clearance zone first (if any clearance is defined and clearance zones are enabled)
       const hasRectClearance = (item.clearanceLeft || 0) > 0 || (item.clearanceRight || 0) > 0 || 
                                (item.clearanceTop || 0) > 0 || (item.clearanceBottom || 0) > 0;
       const hasCircleClearance = (item.clearanceRadius || 0) > 0;
       
-      if ((item.shape === 'rectangle' && hasRectClearance) || (item.shape === 'circle' && hasCircleClearance)) {
+      if (showClearanceZones && ((item.shape === 'rectangle' && hasRectClearance) || (item.shape === 'circle' && hasCircleClearance))) {
         // Get the scaling factor from the equipment item itself
         // The clearance values are already in feet and need to be scaled to match the item's pixel dimensions
         const pixelScale = item.width / (item.realWorldWidth || 30); // Use item's own scale factor
@@ -808,7 +810,7 @@ const MapCanvas: React.FC = () => {
       // Restore the canvas state
       ctx.restore();
     });
-  }, [equipmentItems, isSelected, showEquipmentLabels]);
+  }, [equipmentItems, isSelected, showEquipmentLabels, showClearanceZones]);
 
   const drawGrid = React.useCallback((ctx: CanvasRenderingContext2D) => {
     if (!showGrid || pixelsPerMeter <= 0) return;

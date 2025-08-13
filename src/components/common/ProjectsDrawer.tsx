@@ -28,6 +28,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import AddIcon from '@mui/icons-material/Add';
 import HistoryIcon from '@mui/icons-material/History';
 import { ProjectService, Project } from '../../services/projectService';
+import { EquipmentLibraryService } from '../../services/equipmentLibraryService';
 
 interface ProjectsDrawerProps {
   open: boolean;
@@ -167,24 +168,55 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const jsonData = e.target?.result as string;
-        const importedProject = ProjectService.importProject(jsonData);
+        const content = e.target?.result as string;
+        const projectData = JSON.parse(content);
         
-        // Load the imported project
-        ProjectService.loadProject(importedProject.id);
-        
+        // Import the project
+        const importedProject = ProjectService.importProject(projectData);
         showSnackbar(`Project "${importedProject.name}" imported successfully`);
-        loadProjects(); // Reload projects
-        onClose(); // Close drawer
+        loadProjects();
+        onClose();
       } catch (error) {
         console.error('Error importing project:', error);
-        showSnackbar('Failed to import project. Invalid format.', 'error');
+        showSnackbar('Failed to import project', 'error');
       }
     };
-    
     reader.readAsText(file);
-    // Reset file input
+    
+    // Reset the input value so the same file can be selected again
     event.target.value = '';
+  };
+
+  const handleExportTemplate = () => {
+    try {
+      // Get current equipment library from the store
+      const { useEquipmentStore } = require('../../stores/equipmentStore');
+      const equipmentLibrary = useEquipmentStore.getState().equipmentLibrary;
+      
+      // Export the entire equipment library
+      EquipmentLibraryService.exportLibrary(equipmentLibrary);
+      showSnackbar('Equipment library exported successfully');
+    } catch (error) {
+      console.error('Error exporting equipment library:', error);
+      showSnackbar('Failed to export equipment library', 'error');
+    }
+  };
+
+  const handleImportTemplate = async () => {
+    try {
+      const importedTemplate = await EquipmentLibraryService.importTemplate();
+      if (importedTemplate) {
+        // Add the imported template to the library via the store
+        const { useEquipmentStore } = require('../../stores/equipmentStore');
+        const currentLibrary = useEquipmentStore.getState().equipmentLibrary;
+        const updatedLibrary = [...currentLibrary, importedTemplate];
+        useEquipmentStore.getState().updateEquipmentLibrary(updatedLibrary);
+        showSnackbar(`Template "${importedTemplate.name}" imported successfully`);
+      }
+    } catch (error) {
+      console.error('Error importing template:', error);
+      showSnackbar('Failed to import template', 'error');
+    }
   };
 
   // Handle dialog confirm
@@ -355,6 +387,32 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
                     <ListItemText 
                       primary="Import Project" 
                       secondary="Import from JSON file"
+                    />
+                  </ListItemButton>
+                </ListItem>
+                
+                <Divider sx={{ my: 1 }} />
+                
+                <ListItem disablePadding>
+                  <ListItemButton onClick={handleExportTemplate}>
+                    <ListItemIcon>
+                      <FileDownloadIcon />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary="Export Templates" 
+                      secondary="Export equipment library"
+                    />
+                  </ListItemButton>
+                </ListItem>
+                
+                <ListItem disablePadding>
+                  <ListItemButton onClick={handleImportTemplate}>
+                    <ListItemIcon>
+                      <FileUploadIcon />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary="Import Template" 
+                      secondary="Import equipment template"
                     />
                   </ListItemButton>
                 </ListItem>

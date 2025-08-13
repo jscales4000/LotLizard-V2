@@ -18,9 +18,12 @@ import {
 import {
   Close as CloseIcon,
   Save as SaveIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  FileDownload as ExportIcon,
+  FileUpload as ImportIcon
 } from '@mui/icons-material';
 import { EquipmentTemplate, EquipmentCategory } from '../../services/equipmentService';
+import { EquipmentLibraryService } from '../../services/equipmentLibraryService';
 
 interface LibraryTemplateEditorProps {
   open: boolean;
@@ -148,6 +151,36 @@ export const LibraryTemplateEditor: React.FC<LibraryTemplateEditorProps> = ({
     if (window.confirm(`Are you sure you want to delete "${editedTemplate.name}"?`)) {
       onDelete(editedTemplate.id);
       onClose();
+    }
+  };
+
+  const handleExport = () => {
+    if (!editedTemplate) return;
+    
+    try {
+      EquipmentLibraryService.exportTemplate(editedTemplate);
+      setSuccess('Template exported successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to export template');
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const importedTemplate = await EquipmentLibraryService.importTemplate();
+      if (importedTemplate) {
+        // Generate unique ID to avoid conflicts
+        const timestamp = Date.now();
+        importedTemplate.id = `${importedTemplate.id}-imported-${timestamp}`;
+        
+        setEditedTemplate(importedTemplate);
+        setHasChanges(true);
+        setSuccess('Template imported successfully! You can now edit and save it.');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to import template');
     }
   };
 
@@ -439,26 +472,51 @@ export const LibraryTemplateEditor: React.FC<LibraryTemplateEditorProps> = ({
 
         {/* Action Buttons */}
         <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="contained"
-              onClick={handleSave}
-              disabled={!hasChanges}
-              startIcon={<SaveIcon />}
-              fullWidth
-            >
-              Save Changes
-            </Button>
-            {onDelete && editedTemplate.isCustom && (
+          <Stack spacing={1}>
+            {/* Primary Actions */}
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                onClick={handleSave}
+                disabled={!hasChanges}
+                startIcon={<SaveIcon />}
+                fullWidth
+              >
+                Save Changes
+              </Button>
+              {onDelete && editedTemplate.isCustom && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={handleDelete}
+                  startIcon={<DeleteIcon />}
+                >
+                  Delete
+                </Button>
+              )}
+            </Stack>
+            
+            {/* Import/Export Actions */}
+            <Stack direction="row" spacing={1}>
               <Button
                 variant="outlined"
-                color="error"
-                onClick={handleDelete}
-                startIcon={<DeleteIcon />}
+                onClick={handleExport}
+                startIcon={<ExportIcon />}
+                fullWidth
+                size="small"
               >
-                Delete
+                Export Template
               </Button>
-            )}
+              <Button
+                variant="outlined"
+                onClick={handleImport}
+                startIcon={<ImportIcon />}
+                fullWidth
+                size="small"
+              >
+                Import Template
+              </Button>
+            </Stack>
           </Stack>
         </Box>
       </Box>

@@ -215,6 +215,82 @@ export class EquipmentLibraryService {
   }
 
   /**
+   * Export a single equipment template as JSON file
+   */
+  static exportTemplate(template: EquipmentTemplate): void {
+    try {
+      const templateData = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        template: template
+      };
+      
+      const blob = new Blob([JSON.stringify(templateData, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${template.name.replace(/[^a-zA-Z0-9]/g, '_')}_template.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export template:', error);
+      throw new Error('Failed to export template');
+    }
+  }
+
+  /**
+   * Import a single equipment template from JSON file
+   */
+  static async importTemplate(): Promise<EquipmentTemplate | null> {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      
+      input.onchange = async (event) => {
+        const file = (event.target as HTMLInputElement).files?.[0];
+        if (!file) {
+          resolve(null);
+          return;
+        }
+        
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          
+          // Validate the imported data structure
+          if (!data.template || typeof data.template !== 'object') {
+            throw new Error('Invalid template file format');
+          }
+          
+          const template = data.template;
+          
+          // Validate the template structure
+          if (!this.validateTemplate(template)) {
+            throw new Error('Invalid template structure');
+          }
+          
+          // Mark as custom template since it's being imported
+          template.isCustom = true;
+          
+          resolve(template);
+        } catch (error) {
+          console.error('Failed to import template:', error);
+          reject(new Error('Failed to import template: ' + (error instanceof Error ? error.message : 'Unknown error')));
+        }
+      };
+      
+      input.oncancel = () => resolve(null);
+      input.click();
+    });
+  }
+
+  /**
    * Generate a unique ID for imported templates to avoid conflicts
    */
   private static generateUniqueId(baseId: string, existingTemplates: EquipmentTemplate[]): string {

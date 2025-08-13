@@ -18,11 +18,13 @@ import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import GridOnIcon from '@mui/icons-material/GridOn';
 import GridOffIcon from '@mui/icons-material/GridOff';
 import DeleteIcon from '@mui/icons-material/Delete';
+
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ImageSearchIcon from '@mui/icons-material/ImageSearch';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useMapStore } from '../../stores/mapStore';
+import { useEquipmentStore } from '../../stores/equipmentStore';
 
 // Set width for the left sidebar
 const DRAWER_WIDTH = 60;
@@ -60,6 +62,11 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     setIsPanningMode,
     isPanningMode
   } = useMapStore();
+  
+  const { 
+    getSelectedItems, 
+    removeSelectedItems 
+  } = useEquipmentStore();
   
   // Sync with MapCanvas when Tab key is pressed (isPanningMode changes)
   useEffect(() => {
@@ -155,6 +162,22 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     }
     // Call the parent handler
     onSettingsClick();
+  };
+
+  const handleDeleteSelected = () => {
+    const selectedItems = getSelectedItems();
+    if (selectedItems.length === 0) {
+      // No items selected, show a message or do nothing
+      return;
+    }
+    
+    // Confirm deletion
+    const itemText = selectedItems.length === 1 ? 'item' : 'items';
+    const confirmMessage = `Are you sure you want to delete ${selectedItems.length} selected ${itemText}?`;
+    
+    if (window.confirm(confirmMessage)) {
+      removeSelectedItems();
+    }
   };
 
   return (
@@ -300,7 +323,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <Tooltip title="Delete Selected" placement="right" arrow>
             <ListItem disablePadding>
               <ListItemButton
-                onClick={() => console.log('Delete selected')}
+                onClick={handleDeleteSelected}
                 sx={{ 
                   justifyContent: 'center',
                   minHeight: 48,

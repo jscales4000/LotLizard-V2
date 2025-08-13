@@ -17,15 +17,12 @@ import { useEquipmentStore } from '../../stores/equipmentStore';
 import { EquipmentTemplate } from '../../services/equipmentService';
 import EquipmentList from '../equipment/EquipmentList';
 import { EquipmentLibraryManager } from '../equipment/EquipmentLibraryManager';
-import { LibraryTemplateEditor } from '../equipment/LibraryTemplateEditor';
 
 // Width of the right sidebar
 const DRAWER_WIDTH = 372;
 
 const RightSidebar: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'equipment' | 'list' | 'properties'>('equipment');
-  const [selectedLibraryTemplate, setSelectedLibraryTemplate] = useState<EquipmentTemplate | null>(null);
-  const [libraryEditorOpen, setLibraryEditorOpen] = useState(false);
   const equipmentLibrary = useEquipmentStore(state => state.equipmentLibrary);
   const selectedIds = useEquipmentStore(state => state.selectedIds);
   const items = useEquipmentStore(state => state.items);
@@ -129,10 +126,6 @@ const RightSidebar: React.FC = () => {
                         }));
                         e.dataTransfer.effectAllowed = 'copy';
                       }}
-                      onClick={() => {
-                        setSelectedLibraryTemplate(item);
-                        setLibraryEditorOpen(true);
-                      }}
                       sx={{ 
                         display: 'flex', 
                         alignItems: 'center',
@@ -140,8 +133,7 @@ const RightSidebar: React.FC = () => {
                         pl: 1,
                         '&:hover': {
                           bgcolor: 'action.hover'
-                        },
-                        bgcolor: selectedLibraryTemplate?.id === item.id ? 'action.selected' : 'transparent'
+                        }
                       }}
                     >
                       <Box
@@ -192,32 +184,7 @@ const RightSidebar: React.FC = () => {
           />
         </Box>
       )}
-      
-      {/* Library Template Editor Drawer */}
-      <LibraryTemplateEditor
-        open={libraryEditorOpen}
-        template={selectedLibraryTemplate}
-        onClose={() => {
-          setLibraryEditorOpen(false);
-          setSelectedLibraryTemplate(null);
-        }}
-        onSave={(updatedTemplate: EquipmentTemplate) => {
-          // Update the template in the store
-          useEquipmentStore.getState().updateTemplate(updatedTemplate.id, updatedTemplate);
-          // Update the equipment library
-          useEquipmentStore.getState().updateEquipmentLibrary(
-            equipmentLibrary.map(template => 
-              template.id === updatedTemplate.id ? updatedTemplate : template
-            )
-          );
-        }}
-        onDelete={(templateId: string) => {
-          // Remove template from library (only for custom templates)
-          useEquipmentStore.getState().updateEquipmentLibrary(
-            equipmentLibrary.filter(template => template.id !== templateId)
-          );
-        }}
-      />
+
       
       {activeTab === 'properties' && (
         <Box sx={{ overflow: 'auto', p: 2 }}>

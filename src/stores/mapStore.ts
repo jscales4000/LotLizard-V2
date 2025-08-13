@@ -24,6 +24,7 @@ interface MapState {
   
   // Equipment display settings
   showEquipmentLabels: boolean;
+  showClearanceZones: boolean;
   
   // Actions
   setScale: (scale: number) => void;
@@ -46,6 +47,7 @@ interface MapState {
   
   // Equipment display actions
   toggleEquipmentLabels: () => void;
+  toggleClearanceZones: () => void;
   
   // Pan/move actions
   setIsPanningMode: (isPanning: boolean) => void;
@@ -80,6 +82,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   
   // Equipment display settings
   showEquipmentLabels: true,
+  showClearanceZones: true,
   
   // Implement actions
   setScale: (scale) => set({ scale }),
@@ -148,6 +151,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   
   // Equipment display actions
   toggleEquipmentLabels: () => set((state) => ({ showEquipmentLabels: !state.showEquipmentLabels })),
+  toggleClearanceZones: () => set((state) => ({ showClearanceZones: !state.showClearanceZones })),
   
   // Pan/move actions
   setIsPanningMode: (isPanning) => set({ isPanningMode: isPanning }),

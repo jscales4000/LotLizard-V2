@@ -45,7 +45,9 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
     showCalibrationLine, 
     toggleCalibrationLine,
     showEquipmentLabels,
-    toggleEquipmentLabels 
+    toggleEquipmentLabels,
+    showClearanceZones,
+    toggleClearanceZones
   } = useMapStore();
 
   const handleClose = () => {
@@ -135,6 +137,16 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
                     />
                   }
                   label="Show Equipment Labels"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showClearanceZones}
+                      onChange={toggleClearanceZones}
+                    />
+                  }
+                  label="Show Clearance Zones"
                 />
 
                 <FormControlLabel
