@@ -22,7 +22,10 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import SchoolIcon from '@mui/icons-material/School';
 import { useMapStore } from '../../stores/mapStore';
+import { useOnboardingStore } from '../../stores/onboardingStore';
+import { OnboardingService } from '../../services/onboardingService';
 
 interface SettingsDrawerProps {
   open: boolean;
@@ -50,8 +53,19 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
     toggleClearanceZones
   } = useMapStore();
 
+  const { startOnboarding } = useOnboardingStore();
+
   const handleClose = () => {
     onClose();
+  };
+
+  const handleStartOnboarding = () => {
+    // Reset onboarding status to allow it to show again
+    OnboardingService.resetOnboardingStatus();
+    // Start the onboarding flow
+    startOnboarding();
+    // Close settings drawer
+    handleClose();
   };
 
 
@@ -259,6 +273,33 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
                   <MenuItem value="german">German</MenuItem>
                 </Select>
               </FormControl>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Help & Support */}
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1">Help & Support</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<SchoolIcon />}
+                  onClick={handleStartOnboarding}
+                  sx={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                    }
+                  }}
+                >
+                  Onboard
+                </Button>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                  Restart the interactive tutorial to learn how to use LotLizard V2
+                </Typography>
+              </Box>
             </AccordionDetails>
           </Accordion>
 

@@ -43,9 +43,10 @@ export const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
-  const [exportOptions, setExportOptions] = useState<PDFExportOptions & { projectName: string }>({
+  const [exportOptions, setExportOptions] = useState<PDFExportOptions & { projectName: string; projectLocation: string }>({
     title: 'Equipment Layout Export',
     projectName: projectMetadata.projectName || 'My Layout',
+    projectLocation: '',
     includeMetadata: true,
     quality: 0.95,
     format: 'a4',
@@ -77,6 +78,7 @@ export const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       const metadata: ProjectMetadata = {
         ...projectMetadata,
         projectName: exportOptions.projectName,
+        projectLocation: exportOptions.projectLocation || undefined,
         exportDate: new Date().toLocaleString()
       };
 
@@ -144,6 +146,15 @@ export const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
                 value={exportOptions.title}
                 onChange={(e) => setExportOptions(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Equipment Layout Export"
+              />
+              
+              <TextField
+                fullWidth
+                label="Project Location"
+                value={exportOptions.projectLocation}
+                onChange={(e) => setExportOptions(prev => ({ ...prev, projectLocation: e.target.value }))}
+                placeholder="e.g., Fairgrounds, Event Center, etc."
+                helperText="This will appear in the PDF header below the title"
               />
             </Stack>
           </Box>

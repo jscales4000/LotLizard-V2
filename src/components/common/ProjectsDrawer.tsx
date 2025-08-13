@@ -586,7 +586,27 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
               exportDate: new Date().toLocaleString(),
               itemCount: equipmentItems.length,
               calibrationInfo: activeCalibrationLine ? `${activeCalibrationLine.realWorldDistance} ft` : undefined,
-              scale: scale
+              scale: scale,
+              equipmentItems: equipmentItems.map(item => ({
+                id: item.id,
+                name: item.name,
+                category: item.category || 'Unknown',
+                shape: item.shape || 'rectangle',
+                x: item.x,
+                y: item.y,
+                width: item.realWorldWidth || item.width,
+                height: item.realWorldHeight || item.height,
+                radius: item.realWorldRadius,
+                rotation: item.rotation || 0,
+                capacity: item.capacity,
+                weight: item.weight,
+                verticalHeight: item.verticalHeight,
+                turnAroundTime: item.turnAroundTime,
+                powerLoad: item.powerLoad,
+                powerGen: item.powerGen,
+                ticketCount: item.ticketCount,
+                color: item.color
+              }))
             }}
           />
         )}
