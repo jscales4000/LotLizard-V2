@@ -17,17 +17,20 @@ import {
   Typography,
   Alert,
   CircularProgress,
-
+  Select,
+  MenuItem,
+  InputLabel,
   Stack
 } from '@mui/material';
 import {
   Download as DownloadIcon,
   Upload as UploadIcon,
   Save as SaveIcon,
-  Backup as BackupIcon
+  Backup as BackupIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
 import { EquipmentTemplate } from '../../services/equipmentService';
-import { EquipmentLibraryService, EquipmentLibraryImportOptions } from '../../services/equipmentLibraryService';
+import { EquipmentLibraryService } from '../../services/equipmentLibraryService';
 
 interface EquipmentLibraryManagerProps {
   templates: EquipmentTemplate[];
@@ -38,35 +41,83 @@ export const EquipmentLibraryManager: React.FC<EquipmentLibraryManagerProps> = (
   templates,
   onTemplatesUpdate
 }) => {
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  // Export options state
+  
+  // Export dialog state
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportOptions, setExportOptions] = useState({
     includeCustomOnly: false,
-    categoryFilter: [] as string[],
-    filename: ''
+    includeBuiltIn: true
   });
-
-  // Import options state
-  const [importOptions, setImportOptions] = useState<EquipmentLibraryImportOptions>({
-    mergeStrategy: 'merge',
-    categoryFilter: []
-  });
+  
+  // Import dialog state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
+  const [importOptions, setImportOptions] = useState({
+    mode: 'merge' as 'merge' | 'append' | 'replace'
+  });
+  
+  // Create new template dialog state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newTemplate, setNewTemplate] = useState<Partial<EquipmentTemplate>>({
+    name: '',
+    category: 'rides',
+    shape: 'rectangle',
+    width: 30,
+    height: 20,
+    radius: 15,
+    color: '#4ECDC4',
+    description: '',
+    isCustom: true,
+    capacity: 0,
+    weight: 0,
+    verticalHeight: 0,
+    turnAroundTime: 0,
+    powerLoad: 0,
+    powerGen: 0,
+    ticketCount: 0
+  });
 
   const customTemplateCount = templates.filter(t => t.isCustom).length;
   const totalTemplateCount = templates.length;
 
-  const handleExport = () => {
+  const clearMessages = () => {
+    setError(null);
+    setSuccess(null);
+  };
+
+  const handleSaveToLocalStorage = async () => {
+    setLoading(true);
+    clearMessages();
+    
     try {
-      setLoading(true);
-      EquipmentLibraryService.exportLibrary(templates, exportOptions);
-      setSuccess('Equipment library exported successfully!');
+      // Use localStorage directly since the service method doesn't exist
+      localStorage.setItem('equipmentLibrary', JSON.stringify(templates));
+      setSuccess('Equipment library saved to local storage!');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to save to local storage');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setLoading(true);
+    clearMessages();
+    
+    try {
+      let templatesToExport = templates;
+      
+      if (exportOptions.includeCustomOnly && !exportOptions.includeBuiltIn) {
+        templatesToExport = templates.filter(t => t.isCustom);
+      } else if (!exportOptions.includeCustomOnly && exportOptions.includeBuiltIn) {
+        templatesToExport = templates.filter(t => !t.isCustom);
+      }
+      
+      await EquipmentLibraryService.exportLibrary(templatesToExport);
+      setSuccess(`Exported ${templatesToExport.length} templates successfully!`);
       setExportDialogOpen(false);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to export library');
@@ -76,20 +127,26 @@ export const EquipmentLibraryManager: React.FC<EquipmentLibraryManagerProps> = (
   };
 
   const handleImport = async () => {
-    if (!selectedFile) {
-      setError('Please select a file to import');
-      return;
-    }
-
+    if (!selectedFile) return;
+    
+    setLoading(true);
+    clearMessages();
+    
     try {
-      setLoading(true);
+      const importOptions_service = {
+        mergeStrategy: importOptions.mode,
+        categoryFilter: undefined
+      };
+      
       const updatedTemplates = await EquipmentLibraryService.importLibrary(
-        selectedFile,
-        templates,
-        importOptions
+        selectedFile, 
+        templates, 
+        importOptions_service
       );
+      
       onTemplatesUpdate(updatedTemplates);
-      setSuccess(`Successfully imported ${updatedTemplates.length - templates.length} new templates!`);
+      const importedCount = updatedTemplates.length - templates.length;
+      setSuccess(`Imported ${Math.max(importedCount, 0)} templates successfully!`);
       setImportDialogOpen(false);
       setSelectedFile(null);
     } catch (error) {
@@ -99,202 +156,251 @@ export const EquipmentLibraryManager: React.FC<EquipmentLibraryManagerProps> = (
     }
   };
 
-  const handleSaveToLocalStorage = () => {
-    try {
-      setLoading(true);
-      EquipmentLibraryService.saveLibraryToLocalStorage(templates);
-      setSuccess('Equipment library saved to browser storage!');
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to save library');
-    } finally {
-      setLoading(false);
-    }
+  const handleCreateDialogOpen = () => {
+    // Reset new template to defaults
+    setNewTemplate({
+      name: '',
+      category: 'rides',
+      shape: 'rectangle',
+      width: 30,
+      height: 20,
+      radius: 15,
+      color: '#4ECDC4',
+      description: '',
+      isCustom: true,
+      capacity: 0,
+      weight: 0,
+      verticalHeight: 0,
+      turnAroundTime: 0,
+      powerLoad: 0,
+      powerGen: 0,
+      ticketCount: 0
+    });
+    setCreateDialogOpen(true);
+    clearMessages();
   };
 
-  const handleLoadFromLocalStorage = () => {
-    try {
-      setLoading(true);
-      const storedTemplates = EquipmentLibraryService.loadLibraryFromLocalStorage();
-      if (storedTemplates) {
-        onTemplatesUpdate(storedTemplates);
-        setSuccess('Equipment library loaded from browser storage!');
-      } else {
-        setError('No saved library found in browser storage');
-      }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to load library');
-    } finally {
-      setLoading(false);
+  const handleCreateTemplate = () => {
+    if (!newTemplate.name?.trim()) {
+      setError('Template name is required');
+      return;
     }
-  };
 
-  const clearMessages = () => {
-    setError(null);
-    setSuccess(null);
+    if (newTemplate.shape === 'rectangle' && (!newTemplate.width || !newTemplate.height)) {
+      setError('Width and height are required for rectangular templates');
+      return;
+    }
+
+    if (newTemplate.shape === 'circle' && !newTemplate.radius) {
+      setError('Radius is required for circular templates');
+      return;
+    }
+
+    try {
+      // Generate a unique ID for the new template
+      const maxId = Math.max(...templates.map(t => parseInt(t.id) || 0), 0);
+      const newId = (maxId + 1).toString();
+      
+      const completeTemplate: EquipmentTemplate = {
+        id: newId,
+        name: newTemplate.name,
+        category: newTemplate.category || 'rides',
+        shape: newTemplate.shape || 'rectangle',
+        width: newTemplate.width || 30,
+        height: newTemplate.height || 20,
+        radius: newTemplate.radius || 15,
+        color: newTemplate.color || '#4ECDC4',
+        description: newTemplate.description || '',
+        isCustom: true,
+        capacity: newTemplate.capacity || 0,
+        weight: newTemplate.weight || 0,
+        verticalHeight: newTemplate.verticalHeight || 0,
+        turnAroundTime: newTemplate.turnAroundTime || 0,
+        powerLoad: newTemplate.powerLoad || 0,
+        powerGen: newTemplate.powerGen || 0,
+        ticketCount: newTemplate.ticketCount || 0
+      };
+
+      const updatedTemplates = [...templates, completeTemplate];
+      onTemplatesUpdate(updatedTemplates);
+      setSuccess(`Template "${completeTemplate.name}" created successfully!`);
+      setCreateDialogOpen(false);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to create template');
+    }
   };
 
   return (
-    <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
-      <Box sx={{ mb: 1 }}>
-        <Stack direction="row" spacing={0.5} sx={{ width: '100%' }}>
+    <Box sx={{ 
+      p: 2, 
+      borderTop: 1, 
+      borderColor: 'divider', 
+      bgcolor: 'background.paper',
+      borderRadius: '0 0 8px 8px'
+    }}>
+      {/* Header */}
+      <Typography 
+        variant="subtitle2" 
+        sx={{ 
+          mb: 2, 
+          fontWeight: 600, 
+          color: 'text.primary',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}
+      >
+        <BackupIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+        Library Management
+      </Typography>
+
+      {/* Action Buttons */}
+      <Stack spacing={1.5}>
+        {/* Primary Action - New Template */}
+        <Button
+          variant="contained"
+          onClick={handleCreateDialogOpen}
+          startIcon={<AddIcon />}
+          sx={{ 
+            py: 1.2,
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            textTransform: 'none',
+            borderRadius: 2,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            '&:hover': {
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              transform: 'translateY(-1px)',
+              background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)'
+            },
+            transition: 'all 0.2s ease-in-out'
+          }}
+        >
+          New
+        </Button>
+
+        {/* Secondary Actions */}
+        <Stack direction="row" spacing={1}>
           <Button
-            size="small"
+            variant="outlined"
             onClick={() => setExportDialogOpen(true)}
+            startIcon={<DownloadIcon />}
             sx={{ 
               flex: 1,
-              px: 1.5, 
-              py: 0.75,
-              fontSize: '0.875rem',
-              color: 'text.secondary',
-              textTransform: 'none',
+              py: 0.8,
+              fontSize: '0.8rem',
               fontWeight: 500,
-              border: '1px solid',
+              textTransform: 'none',
+              borderRadius: 1.5,
               borderColor: 'divider',
+              color: 'text.secondary',
               '&:hover': { 
                 bgcolor: 'action.hover',
+                borderColor: 'primary.main',
                 color: 'primary.main',
-                borderColor: 'primary.main'
-              }
+                transform: 'translateY(-1px)'
+              },
+              transition: 'all 0.2s ease-in-out'
             }}
           >
-            <DownloadIcon sx={{ fontSize: 16, mr: 0.5 }} />
             Export
           </Button>
           
           <Button
-            size="small"
+            variant="outlined"
             onClick={() => setImportDialogOpen(true)}
+            startIcon={<UploadIcon />}
             sx={{ 
               flex: 1,
-              px: 1.5, 
-              py: 0.75,
-              fontSize: '0.875rem',
-              color: 'text.secondary',
-              textTransform: 'none',
+              py: 0.8,
+              fontSize: '0.8rem',
               fontWeight: 500,
-              border: '1px solid',
+              textTransform: 'none',
+              borderRadius: 1.5,
               borderColor: 'divider',
+              color: 'text.secondary',
               '&:hover': { 
                 bgcolor: 'action.hover',
+                borderColor: 'primary.main',
                 color: 'primary.main',
-                borderColor: 'primary.main'
-              }
+                transform: 'translateY(-1px)'
+              },
+              transition: 'all 0.2s ease-in-out'
             }}
           >
-            <UploadIcon sx={{ fontSize: 16, mr: 0.5 }} />
             Import
           </Button>
-          
-          <Button
-            size="small"
-            onClick={handleSaveToLocalStorage}
-            disabled={loading}
-            sx={{ 
-              flex: 1,
-              px: 1.5, 
-              py: 0.75,
-              fontSize: '0.875rem',
-              color: 'text.secondary',
-              textTransform: 'none',
-              fontWeight: 500,
-              border: '1px solid',
-              borderColor: 'divider',
-              '&:hover': { 
-                bgcolor: 'action.hover',
-                color: 'primary.main',
-                borderColor: 'primary.main'
-              },
-              '&:disabled': {
-                color: 'text.disabled',
-                borderColor: 'action.disabled'
-              }
-            }}
-          >
-            <SaveIcon sx={{ fontSize: 16, mr: 0.5 }} />
-            Save
-          </Button>
-          
-          <Button
-            size="small"
-            onClick={handleLoadFromLocalStorage}
-            disabled={loading}
-            sx={{ 
-              flex: 1,
-              px: 1.5, 
-              py: 0.75,
-              fontSize: '0.875rem',
-              color: 'text.secondary',
-              textTransform: 'none',
-              fontWeight: 500,
-              border: '1px solid',
-              borderColor: 'divider',
-              '&:hover': { 
-                bgcolor: 'action.hover',
-                color: 'primary.main',
-                borderColor: 'primary.main'
-              },
-              '&:disabled': {
-                color: 'text.disabled',
-                borderColor: 'action.disabled'
-              }
-            }}
-          >
-            <BackupIcon sx={{ fontSize: 16, mr: 0.5 }} />
-            Load
-          </Button>
         </Stack>
-      </Box>
+      </Stack>
 
-      {/* Success/Error Messages */}
+      {/* Status Messages */}
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }} onClose={clearMessages}>
+        <Alert severity="error" sx={{ mt: 2 }}>
           {error}
         </Alert>
       )}
-      
       {success && (
-        <Alert severity="success" sx={{ mt: 2 }} onClose={clearMessages}>
+        <Alert severity="success" sx={{ mt: 2 }}>
           {success}
         </Alert>
       )}
+
+      {/* Save to Local Storage Button */}
+      <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+        <Button
+          variant="text"
+          onClick={handleSaveToLocalStorage}
+          disabled={loading}
+          startIcon={<SaveIcon />}
+          sx={{ 
+            width: '100%',
+            py: 0.8,
+            fontSize: '0.8rem',
+            fontWeight: 500,
+            textTransform: 'none',
+            color: 'text.secondary',
+            '&:hover': { 
+              bgcolor: 'action.hover',
+              color: 'primary.main'
+            }
+          }}
+        >
+          {loading ? 'Saving...' : 'Save to Local Storage'}
+        </Button>
+      </Box>
 
       {/* Export Dialog */}
       <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Export Equipment Library</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
-            <FormGroup>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={exportOptions.includeCustomOnly}
-                    onChange={(e) => setExportOptions(prev => ({ 
-                      ...prev, 
-                      includeCustomOnly: e.target.checked 
-                    }))}
-                  />
-                }
-                label="Export custom templates only"
-              />
-            </FormGroup>
-
-            <TextField
-              fullWidth
-              label="Filename (optional)"
-              value={exportOptions.filename}
-              onChange={(e) => setExportOptions(prev => ({ 
-                ...prev, 
-                filename: e.target.value 
-              }))}
-              placeholder="equipment-library-export.json"
-              sx={{ mt: 2 }}
-            />
-
+            <FormControl component="fieldset">
+              <FormLabel component="legend">Export Options</FormLabel>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={exportOptions.includeCustomOnly}
+                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeCustomOnly: e.target.checked }))}
+                    />
+                  }
+                  label="Include custom templates only"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={exportOptions.includeBuiltIn}
+                      onChange={(e) => setExportOptions(prev => ({ ...prev, includeBuiltIn: e.target.checked }))}
+                    />
+                  }
+                  label="Include built-in templates"
+                />
+              </FormGroup>
+            </FormControl>
+            
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              {exportOptions.includeCustomOnly 
-                ? `Will export ${customTemplateCount} custom templates`
-                : `Will export all ${totalTemplateCount} templates`
-              }
+              Custom templates: {customTemplateCount} | Total templates: {totalTemplateCount}
             </Typography>
           </Box>
         </DialogContent>
@@ -320,17 +426,14 @@ export const EquipmentLibraryManager: React.FC<EquipmentLibraryManagerProps> = (
               type="file"
               accept=".json"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: '16px' }}
             />
-
+            
             <FormControl component="fieldset" sx={{ mt: 2 }}>
-              <FormLabel component="legend">Import Strategy</FormLabel>
+              <FormLabel component="legend">Import Mode</FormLabel>
               <RadioGroup
-                value={importOptions.mergeStrategy}
-                onChange={(e) => setImportOptions(prev => ({ 
-                  ...prev, 
-                  mergeStrategy: e.target.value as any 
-                }))}
+                value={importOptions.mode}
+                onChange={(e) => setImportOptions(prev => ({ ...prev, mode: e.target.value as any }))}
               >
                 <FormControlLabel 
                   value="merge" 
@@ -366,6 +469,189 @@ export const EquipmentLibraryManager: React.FC<EquipmentLibraryManagerProps> = (
             startIcon={loading ? <CircularProgress size={16} /> : <UploadIcon />}
           >
             Import
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create New Template Dialog */}
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Create New Equipment Template</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1 }}>
+            <Stack spacing={2}>
+              {/* Basic Information */}
+              <TextField
+                fullWidth
+                label="Template Name"
+                value={newTemplate.name || ''}
+                onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+                required
+              />
+              
+              <TextField
+                fullWidth
+                label="Description"
+                value={newTemplate.description || ''}
+                onChange={(e) => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
+                multiline
+                rows={2}
+              />
+
+              {/* Category and Shape */}
+              <Stack direction="row" spacing={2}>
+                <FormControl fullWidth>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    value={newTemplate.category || 'rides'}
+                    onChange={(e) => setNewTemplate(prev => ({ ...prev, category: e.target.value as any }))}
+                    label="Category"
+                  >
+                    <MenuItem value="mega-rides">Mega Rides</MenuItem>
+                    <MenuItem value="rides">Rides</MenuItem>
+                    <MenuItem value="kiddy-rides">Kiddy Rides</MenuItem>
+                    <MenuItem value="food">Food</MenuItem>
+                    <MenuItem value="games">Games</MenuItem>
+                    <MenuItem value="equipment">Equipment</MenuItem>
+                    <MenuItem value="office">Office</MenuItem>
+                    <MenuItem value="home">Home</MenuItem>
+                    <MenuItem value="bunks">Bunks</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <FormControl fullWidth>
+                  <InputLabel>Shape</InputLabel>
+                  <Select
+                    value={newTemplate.shape || 'rectangle'}
+                    onChange={(e) => setNewTemplate(prev => ({ ...prev, shape: e.target.value as 'rectangle' | 'circle' }))}
+                    label="Shape"
+                  >
+                    <MenuItem value="rectangle">Rectangle</MenuItem>
+                    <MenuItem value="circle">Circle</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+
+              {/* Dimensions */}
+              {newTemplate.shape === 'rectangle' ? (
+                <Stack direction="row" spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="Width (ft)"
+                    type="number"
+                    value={newTemplate.width || ''}
+                    onChange={(e) => setNewTemplate(prev => ({ ...prev, width: parseFloat(e.target.value) || 0 }))}
+                    inputProps={{ min: 0, step: 0.1 }}
+                    required
+                  />
+                  <TextField
+                    fullWidth
+                    label="Height (ft)"
+                    type="number"
+                    value={newTemplate.height || ''}
+                    onChange={(e) => setNewTemplate(prev => ({ ...prev, height: parseFloat(e.target.value) || 0 }))}
+                    inputProps={{ min: 0, step: 0.1 }}
+                    required
+                  />
+                </Stack>
+              ) : (
+                <TextField
+                  fullWidth
+                  label="Radius (ft)"
+                  type="number"
+                  value={newTemplate.radius || ''}
+                  onChange={(e) => setNewTemplate(prev => ({ ...prev, radius: parseFloat(e.target.value) || 0 }))}
+                  inputProps={{ min: 0, step: 0.1 }}
+                  required
+                />
+              )}
+
+              {/* Color */}
+              <TextField
+                fullWidth
+                label="Color (hex)"
+                value={newTemplate.color || '#4ECDC4'}
+                onChange={(e) => setNewTemplate(prev => ({ ...prev, color: e.target.value }))}
+                placeholder="#4ECDC4"
+              />
+
+              {/* Equipment Properties */}
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mt: 2 }}>Equipment Properties</Typography>
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  fullWidth
+                  label="Capacity"
+                  type="number"
+                  value={newTemplate.capacity || ''}
+                  onChange={(e) => setNewTemplate(prev => ({ ...prev, capacity: parseInt(e.target.value) || 0 }))}
+                  inputProps={{ min: 0, step: 1 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Weight (lbs)"
+                  type="number"
+                  value={newTemplate.weight || ''}
+                  onChange={(e) => setNewTemplate(prev => ({ ...prev, weight: parseFloat(e.target.value) || 0 }))}
+                  inputProps={{ min: 0, step: 1 }}
+                />
+              </Stack>
+              
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  fullWidth
+                  label="Vertical Height (ft)"
+                  type="number"
+                  value={newTemplate.verticalHeight || ''}
+                  onChange={(e) => setNewTemplate(prev => ({ ...prev, verticalHeight: parseFloat(e.target.value) || 0 }))}
+                  inputProps={{ min: 0, step: 0.1 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Turn Around Time (min)"
+                  type="number"
+                  value={newTemplate.turnAroundTime || ''}
+                  onChange={(e) => setNewTemplate(prev => ({ ...prev, turnAroundTime: parseFloat(e.target.value) || 0 }))}
+                  inputProps={{ min: 0, step: 0.1 }}
+                />
+              </Stack>
+              
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  fullWidth
+                  label="Power Load"
+                  type="number"
+                  value={newTemplate.powerLoad || ''}
+                  onChange={(e) => setNewTemplate(prev => ({ ...prev, powerLoad: parseFloat(e.target.value) || 0 }))}
+                  inputProps={{ min: 0, step: 0.1 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Power Gen"
+                  type="number"
+                  value={newTemplate.powerGen || ''}
+                  onChange={(e) => setNewTemplate(prev => ({ ...prev, powerGen: parseFloat(e.target.value) || 0 }))}
+                  inputProps={{ min: 0, step: 0.1 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Ticket Count"
+                  type="number"
+                  value={newTemplate.ticketCount || ''}
+                  onChange={(e) => setNewTemplate(prev => ({ ...prev, ticketCount: parseInt(e.target.value) || 0 }))}
+                  inputProps={{ min: 0, step: 1 }}
+                />
+              </Stack>
+            </Stack>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleCreateTemplate} 
+            variant="contained" 
+            disabled={loading || !newTemplate.name?.trim()}
+            startIcon={loading ? <CircularProgress size={16} /> : <AddIcon />}
+          >
+            Create Template
           </Button>
         </DialogActions>
       </Dialog>

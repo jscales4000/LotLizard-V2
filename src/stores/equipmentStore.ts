@@ -31,6 +31,9 @@ export interface EquipmentItem {
   weight?: number; // in lbs
   verticalHeight?: number; // in feet
   turnAroundTime?: number; // in minutes
+  powerLoad?: number; // power consumption in watts/amps
+  powerGen?: number; // power generation in watts/amps
+  ticketCount?: number; // number of tickets required
   // Visibility control
   visible?: boolean; // whether item is visible on canvas (default: true)
 }

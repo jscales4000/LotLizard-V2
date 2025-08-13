@@ -58,7 +58,15 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
     clearanceRight: item.clearanceRight || 0,
     clearanceTop: item.clearanceTop || 0,
     clearanceBottom: item.clearanceBottom || 0,
-    clearanceRadius: item.clearanceRadius || 0
+    clearanceRadius: item.clearanceRadius || 0,
+    // Additional equipment properties
+    capacity: item.capacity || 0,
+    weight: item.weight || 0,
+    verticalHeight: item.verticalHeight || 0,
+    turnAroundTime: item.turnAroundTime || 0,
+    powerLoad: item.powerLoad || 0,
+    powerGen: item.powerGen || 0,
+    ticketCount: item.ticketCount || 0
   });
 
   // Track if there are unsaved changes
@@ -84,7 +92,10 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
       capacity: item.capacity || 0,
       weight: item.weight || 0,
       verticalHeight: item.verticalHeight || 0,
-      turnAroundTime: item.turnAroundTime || 0
+      turnAroundTime: item.turnAroundTime || 0,
+      powerLoad: item.powerLoad || 0,
+      powerGen: item.powerGen || 0,
+      ticketCount: item.ticketCount || 0
     });
     setHasChanges(false);
   }, [item]); // Reset when item changes
@@ -108,7 +119,10 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
       editedItem.capacity !== (item.capacity || 0) ||
       editedItem.weight !== (item.weight || 0) ||
       editedItem.verticalHeight !== (item.verticalHeight || 0) ||
-      editedItem.turnAroundTime !== (item.turnAroundTime || 0);
+      editedItem.turnAroundTime !== (item.turnAroundTime || 0) ||
+      editedItem.powerLoad !== (item.powerLoad || 0) ||
+      editedItem.powerGen !== (item.powerGen || 0) ||
+      editedItem.ticketCount !== (item.ticketCount || 0);
     
     setHasChanges(changed);
   }, [editedItem, item]);
@@ -514,6 +528,42 @@ const EquipmentEditor: React.FC<EquipmentEditorProps> = ({ item, onClose }) => {
             inputProps={{ min: 0, step: 0.1 }}
             size="small"
             helperText="Time in minutes"
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Power Load"
+            type="number"
+            value={editedItem.powerLoad || ''}
+            onChange={(e) => handleFieldChange('powerLoad', parseFloat(e.target.value) || 0)}
+            inputProps={{ min: 0, step: 0.1 }}
+            size="small"
+            helperText="Power consumption"
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Power Gen"
+            type="number"
+            value={editedItem.powerGen || ''}
+            onChange={(e) => handleFieldChange('powerGen', parseFloat(e.target.value) || 0)}
+            inputProps={{ min: 0, step: 0.1 }}
+            size="small"
+            helperText="Power generation"
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Ticket Count"
+            type="number"
+            value={editedItem.ticketCount || ''}
+            onChange={(e) => handleFieldChange('ticketCount', parseInt(e.target.value) || 0)}
+            inputProps={{ min: 0, step: 1 }}
+            size="small"
+            helperText="Number of tickets"
           />
         </Grid>
       </Grid>

@@ -33,6 +33,9 @@ export interface EquipmentTemplate {
   weight: number;
   verticalHeight: number;
   turnAroundTime: number;
+  powerLoad?: number;
+  powerGen?: number;
+  ticketCount?: number;
   isCustom?: boolean;
 }
 
