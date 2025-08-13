@@ -27,8 +27,12 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import AddIcon from '@mui/icons-material/Add';
 import HistoryIcon from '@mui/icons-material/History';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { ProjectService, Project } from '../../services/projectService';
 import { EquipmentLibraryService } from '../../services/equipmentLibraryService';
+import { PDFExportDialog } from '../export/PDFExportDialog';
+import { useMapStore } from '../../stores/mapStore';
+import { useEquipmentStore } from '../../stores/equipmentStore';
 
 interface ProjectsDrawerProps {
   open: boolean;
@@ -45,7 +49,13 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>('success');
+  const [pdfExportDialogOpen, setPdfExportDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Get stores for PDF export
+  const { scale, activeCalibrationLine } = useMapStore();
+  const { items: equipmentItems } = useEquipmentStore();
   
   // Define showSnackbar function first since it's used by loadProjects
   const showSnackbar = useCallback((message: string, severity: AlertColor = 'success') => {
@@ -216,6 +226,23 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
     } catch (error) {
       console.error('Error importing template:', error);
       showSnackbar('Failed to import template', 'error');
+    }
+  };
+
+  const handleExportToPDF = () => {
+    // Find the canvas element in the DOM
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    if (canvas) {
+      // Store canvas reference and open dialog
+      if (canvasRef.current !== canvas) {
+        Object.defineProperty(canvasRef, 'current', {
+          value: canvas,
+          writable: true
+        });
+      }
+      setPdfExportDialogOpen(true);
+    } else {
+      showSnackbar('No canvas found to export', 'error');
     }
   };
 
@@ -416,6 +443,20 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
                     />
                   </ListItemButton>
                 </ListItem>
+                
+                <Divider sx={{ my: 1 }} />
+                
+                <ListItem disablePadding>
+                  <ListItemButton onClick={handleExportToPDF}>
+                    <ListItemIcon>
+                      <PictureAsPdfIcon />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary="Export to PDF" 
+                      secondary="Export layout as PDF document"
+                    />
+                  </ListItemButton>
+                </ListItem>
               </List>
             </Box>
             
@@ -533,6 +574,22 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
           accept=".json"
           style={{ display: 'none' }}
         />
+        
+        {/* PDF Export Dialog */}
+        {canvasRef.current && (
+          <PDFExportDialog
+            open={pdfExportDialogOpen}
+            onClose={() => setPdfExportDialogOpen(false)}
+            canvasRef={canvasRef}
+            projectMetadata={{
+              projectName: ProjectService.getCurrentProject()?.name || 'Untitled Project',
+              exportDate: new Date().toLocaleString(),
+              itemCount: equipmentItems.length,
+              calibrationInfo: activeCalibrationLine ? `${activeCalibrationLine.realWorldDistance} ft` : undefined,
+              scale: scale
+            }}
+          />
+        )}
     </Box>
   );
 };
