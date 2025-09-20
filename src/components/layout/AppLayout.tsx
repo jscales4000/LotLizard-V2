@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import TopBar from './TopBar';
 import LeftSidebar from './LeftSidebar';
@@ -7,6 +7,10 @@ import MapCanvas from '../map/MapCanvas';
 import ProjectsDrawer from '../common/ProjectsDrawer';
 import ImageImportDrawer from '../common/ImageImportDrawer';
 import SettingsDrawer from '../common/SettingsDrawer';
+import { WelcomeDialog } from '../onboarding/WelcomeDialog';
+import { OnboardingOverlay } from '../onboarding/OnboardingOverlay';
+import { useOnboardingStore } from '../../stores/onboardingStore';
+import { OnboardingService } from '../../services/onboardingService';
 
 // Create a dark theme based on the UI examples
 const darkTheme = createTheme({
@@ -37,6 +41,23 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
   const [imageImportDrawerOpen, setImageImportDrawerOpen] = useState(false);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
+  
+  // Onboarding state
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const {
+    isOnboardingActive,
+    startOnboarding,
+    stopOnboarding,
+    completeOnboarding,
+    skipOnboarding
+  } = useOnboardingStore();
+  
+  // Check if user should see onboarding on mount
+  useEffect(() => {
+    if (OnboardingService.shouldShowOnboarding()) {
+      setShowWelcomeDialog(true);
+    }
+  }, []);
 
   // Handlers for drawer state
   const handleProjectsDrawerToggle = () => {
@@ -64,6 +85,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       setProjectsDrawerOpen(false);
       setImageImportDrawerOpen(false);
     }
+  };
+
+  // Onboarding handlers
+  const handleStartOnboarding = () => {
+    setShowWelcomeDialog(false);
+    startOnboarding();
+  };
+
+  const handleSkipOnboarding = () => {
+    setShowWelcomeDialog(false);
+    skipOnboarding();
   };
   return (
     <ThemeProvider theme={darkTheme}>
@@ -120,6 +152,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         
         {/* Right Sidebar with equipment library and properties */}
         <RightSidebar />
+        
+        {/* Onboarding Components */}
+        <WelcomeDialog
+          open={showWelcomeDialog}
+          onStartOnboarding={handleStartOnboarding}
+          onSkip={handleSkipOnboarding}
+        />
+        
+        {isOnboardingActive && (
+          <OnboardingOverlay
+            open={isOnboardingActive}
+            onClose={stopOnboarding}
+            onComplete={completeOnboarding}
+            onSkip={stopOnboarding}
+          />
+        )}
       </Box>
     </ThemeProvider>
   );

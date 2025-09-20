@@ -27,8 +27,13 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import AddIcon from '@mui/icons-material/Add';
 import HistoryIcon from '@mui/icons-material/History';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import FolderIcon from '@mui/icons-material/Folder';
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import { ProjectService, Project } from '../../services/projectService';
-import { EquipmentLibraryService } from '../../services/equipmentLibraryService';
+import { PDFExportDialog } from '../export/PDFExportDialog';
+import { useMapStore } from '../../stores/mapStore';
+import { useEquipmentStore } from '../../stores/equipmentStore';
 
 interface ProjectsDrawerProps {
   open: boolean;
@@ -45,7 +50,13 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>('success');
+  const [pdfExportDialogOpen, setPdfExportDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Get stores for PDF export
+  const { scale, activeCalibrationLine } = useMapStore();
+  const { items: equipmentItems } = useEquipmentStore();
   
   // Define showSnackbar function first since it's used by loadProjects
   const showSnackbar = useCallback((message: string, severity: AlertColor = 'success') => {
@@ -117,15 +128,45 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
   
   const handleSaveAsProject = () => {
     setDialogType('save');
-    
+
     const currentProject = ProjectService.getCurrentProject();
     if (currentProject) {
       setProjectName(`${currentProject.name} - Copy`);
     } else {
       setProjectName('New Project');
     }
-    
+
     setDialogOpen(true);
+  };
+
+  const handleSaveToFileSystem = async () => {
+    try {
+      await ProjectService.saveProjectToFile();
+      showSnackbar('Project saved to file system successfully');
+    } catch (error) {
+      console.error('Error saving to file system:', error);
+      showSnackbar('Failed to save project to file system', 'error');
+    }
+  };
+
+  const handleOpenFromFileSystem = async () => {
+    try {
+      const project = await ProjectService.openProjectFromFile();
+      if (project) {
+        // Load the project
+        const loaded = ProjectService.loadProject(project.id);
+        if (loaded) {
+          showSnackbar(`Project "${project.name}" opened successfully`);
+          loadProjects(); // Refresh the projects list
+          onClose();
+        } else {
+          showSnackbar('Failed to load opened project', 'error');
+        }
+      }
+    } catch (error) {
+      console.error('Error opening from file system:', error);
+      showSnackbar('Failed to open project from file system', 'error');
+    }
   };
   
   const handleExportProject = () => {
@@ -169,10 +210,9 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
     reader.onload = (e) => {
       try {
         const content = e.target?.result as string;
-        const projectData = JSON.parse(content);
-        
-        // Import the project
-        const importedProject = ProjectService.importProject(projectData);
+
+        // Import the project (pass the raw string, not parsed JSON)
+        const importedProject = ProjectService.importProject(content);
         showSnackbar(`Project "${importedProject.name}" imported successfully`);
         loadProjects();
         onClose();
@@ -187,35 +227,21 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
     event.target.value = '';
   };
 
-  const handleExportTemplate = () => {
-    try {
-      // Get current equipment library from the store
-      const { useEquipmentStore } = require('../../stores/equipmentStore');
-      const equipmentLibrary = useEquipmentStore.getState().equipmentLibrary;
-      
-      // Export the entire equipment library
-      EquipmentLibraryService.exportLibrary(equipmentLibrary);
-      showSnackbar('Equipment library exported successfully');
-    } catch (error) {
-      console.error('Error exporting equipment library:', error);
-      showSnackbar('Failed to export equipment library', 'error');
-    }
-  };
 
-  const handleImportTemplate = async () => {
-    try {
-      const importedTemplate = await EquipmentLibraryService.importTemplate();
-      if (importedTemplate) {
-        // Add the imported template to the library via the store
-        const { useEquipmentStore } = require('../../stores/equipmentStore');
-        const currentLibrary = useEquipmentStore.getState().equipmentLibrary;
-        const updatedLibrary = [...currentLibrary, importedTemplate];
-        useEquipmentStore.getState().updateEquipmentLibrary(updatedLibrary);
-        showSnackbar(`Template "${importedTemplate.name}" imported successfully`);
+  const handleExportToPDF = () => {
+    // Find the canvas element in the DOM
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    if (canvas) {
+      // Store canvas reference and open dialog
+      if (canvasRef.current !== canvas) {
+        Object.defineProperty(canvasRef, 'current', {
+          value: canvas,
+          writable: true
+        });
       }
-    } catch (error) {
-      console.error('Error importing template:', error);
-      showSnackbar('Failed to import template', 'error');
+      setPdfExportDialogOpen(true);
+    } else {
+      showSnackbar('No canvas found to export', 'error');
     }
   };
 
@@ -229,8 +255,18 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
         ProjectService.saveProject(newProject);
         
         // Reset map and equipment stores to blank slate
-        // This would be better handled within the ProjectService
-        window.location.reload(); // Temporary solution to clear state
+        const { useMapStore } = require('../../stores/mapStore');
+        const { useEquipmentStore } = require('../../stores/equipmentStore');
+
+        // Reset map store
+        useMapStore.getState().setScale(1.0);
+        useMapStore.getState().setPosition({ x: 0, y: 0 });
+        useMapStore.getState().setImageUrl(null);
+        useMapStore.getState().setPixelsPerMeter(1);
+        useMapStore.getState().clearCalibration();
+
+        // Reset equipment store
+        useEquipmentStore.getState().clearAll();
         
         showSnackbar(`New project "${projectName}" created`);
       } 
@@ -332,9 +368,21 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
                     <ListItemIcon>
                       <FolderOpenIcon />
                     </ListItemIcon>
-                    <ListItemText 
-                      primary="Open Project" 
-                      secondary="Load an existing project file"
+                    <ListItemText
+                      primary="Open Project"
+                      secondary="Load from local storage"
+                    />
+                  </ListItemButton>
+                </ListItem>
+
+                <ListItem disablePadding>
+                  <ListItemButton onClick={handleOpenFromFileSystem}>
+                    <ListItemIcon>
+                      <FolderIcon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Open from File"
+                      secondary="Load project from file system"
                     />
                   </ListItemButton>
                 </ListItem>
@@ -358,9 +406,21 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
                     <ListItemIcon>
                       <SaveAsIcon />
                     </ListItemIcon>
-                    <ListItemText 
-                      primary="Save As" 
+                    <ListItemText
+                      primary="Save As"
                       secondary="Save project with new name"
+                    />
+                  </ListItemButton>
+                </ListItem>
+
+                <ListItem disablePadding>
+                  <ListItemButton onClick={handleSaveToFileSystem}>
+                    <ListItemIcon>
+                      <CreateNewFolderIcon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Save to File"
+                      secondary="Save project to file system"
                     />
                   </ListItemButton>
                 </ListItem>
@@ -394,25 +454,13 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
                 <Divider sx={{ my: 1 }} />
                 
                 <ListItem disablePadding>
-                  <ListItemButton onClick={handleExportTemplate}>
+                  <ListItemButton onClick={handleExportToPDF}>
                     <ListItemIcon>
-                      <FileDownloadIcon />
+                      <PictureAsPdfIcon />
                     </ListItemIcon>
                     <ListItemText 
-                      primary="Export Templates" 
-                      secondary="Export equipment library"
-                    />
-                  </ListItemButton>
-                </ListItem>
-                
-                <ListItem disablePadding>
-                  <ListItemButton onClick={handleImportTemplate}>
-                    <ListItemIcon>
-                      <FileUploadIcon />
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary="Import Template" 
-                      secondary="Import equipment template"
+                      primary="Export to PDF" 
+                      secondary="Export layout as PDF document"
                     />
                   </ListItemButton>
                 </ListItem>
@@ -533,6 +581,42 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({ open, onClose }) => {
           accept=".json"
           style={{ display: 'none' }}
         />
+        
+        {/* PDF Export Dialog */}
+        {canvasRef.current && (
+          <PDFExportDialog
+            open={pdfExportDialogOpen}
+            onClose={() => setPdfExportDialogOpen(false)}
+            canvasRef={canvasRef}
+            projectMetadata={{
+              projectName: ProjectService.getCurrentProject()?.name || 'Untitled Project',
+              exportDate: new Date().toLocaleString(),
+              itemCount: equipmentItems.length,
+              calibrationInfo: activeCalibrationLine ? `${activeCalibrationLine.realWorldDistance} ft` : undefined,
+              scale: scale,
+              equipmentItems: equipmentItems.map(item => ({
+                id: item.id,
+                name: item.name,
+                category: item.category || 'Unknown',
+                shape: item.shape || 'rectangle',
+                x: item.x,
+                y: item.y,
+                width: item.realWorldWidth || item.width,
+                height: item.realWorldHeight || item.height,
+                radius: item.realWorldRadius,
+                rotation: item.rotation || 0,
+                capacity: item.capacity,
+                weight: item.weight,
+                verticalHeight: item.verticalHeight,
+                turnAroundTime: item.turnAroundTime,
+                powerLoad: item.powerLoad,
+                powerGen: item.powerGen,
+                ticketCount: item.ticketCount,
+                color: item.color
+              }))
+            }}
+          />
+        )}
     </Box>
   );
 };
