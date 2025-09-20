@@ -566,13 +566,129 @@ export const EquipmentLibraryManager: React.FC<EquipmentLibraryManagerProps> = (
               )}
 
               {/* Color */}
-              <TextField
-                fullWidth
-                label="Color (hex)"
-                value={newTemplate.color || '#4ECDC4'}
-                onChange={(e) => setNewTemplate(prev => ({ ...prev, color: e.target.value }))}
-                placeholder="#4ECDC4"
-              />
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>Color</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      backgroundColor: newTemplate.color || '#4ECDC4',
+                      border: '2px solid #ddd',
+                      borderRadius: 1,
+                      cursor: 'pointer',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                      },
+                      '&:focus': {
+                        outline: '2px solid',
+                        outlineColor: 'primary.main',
+                        outlineOffset: '2px'
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Open color picker"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const input = document.createElement('input');
+                        input.type = 'color';
+                        input.value = newTemplate.color || '#4ECDC4';
+                        input.addEventListener('change', (e) => {
+                          const target = e.target as HTMLInputElement;
+                          setNewTemplate(prev => ({ ...prev, color: target.value }));
+                        });
+                        input.click();
+                      }
+                    }}
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'color';
+                      input.value = newTemplate.color || '#4ECDC4';
+                      input.addEventListener('change', (e) => {
+                        const target = e.target as HTMLInputElement;
+                        setNewTemplate(prev => ({ ...prev, color: target.value }));
+                      });
+                      input.click();
+                    }}
+                  >
+                    <Typography variant="caption" sx={{
+                      color: 'white',
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.7)',
+                      fontSize: '10px',
+                      fontWeight: 'bold'
+                    }}>
+                      PICK
+                    </Typography>
+                  </Box>
+                  <TextField
+                    label="Hex Color"
+                    value={newTemplate.color || '#4ECDC4'}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Auto-format hex values
+                      if (value.match(/^[0-9A-Fa-f]{6}$/)) {
+                        setNewTemplate(prev => ({ ...prev, color: '#' + value }));
+                      } else if (value.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                        setNewTemplate(prev => ({ ...prev, color: value }));
+                      }
+                    }}
+                    placeholder="#4ECDC4"
+                    sx={{ flexGrow: 1 }}
+                    inputProps={{
+                      pattern: '^#[0-9A-Fa-f]{6}$',
+                      maxLength: 7
+                    }}
+                    helperText="Enter hex color (e.g., #FF0000)"
+                  />
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Popular Colors:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                  {[
+                    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+                    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#F8C471',
+                    '#F1948A', '#85C1E9', '#A9CCE3', '#A3E4D7', '#F5B7B1',
+                    '#AED6F1', '#D7BDE2', '#A9DFBF', '#FADBD8', '#D5DBDB'
+                  ].map((color) => (
+                    <Box
+                      key={color}
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        backgroundColor: color,
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        border: newTemplate.color === color ? '3px solid #333' : '2px solid #ddd',
+                        boxSizing: 'border-box',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          transform: 'scale(1.15)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                          borderColor: newTemplate.color === color ? '#333' : '#999'
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Select color ${color}`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setNewTemplate(prev => ({ ...prev, color }));
+                        }
+                      }}
+                      onClick={() => setNewTemplate(prev => ({ ...prev, color }))}
+                    />
+                  ))}
+                </Box>
+              </Box>
 
               {/* Equipment Properties */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mt: 2 }}>Equipment Properties</Typography>

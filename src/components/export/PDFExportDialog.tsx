@@ -42,6 +42,7 @@ export const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string>('');
   
   const [exportOptions, setExportOptions] = useState<PDFExportOptions & { projectName: string; projectLocation: string }>({
     title: 'Equipment Layout Export',
@@ -56,6 +57,7 @@ export const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
   const clearMessages = () => {
     setError(null);
     setSuccess(null);
+    setProgress('');
   };
 
   const handleExport = async () => {
@@ -68,11 +70,15 @@ export const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
     clearMessages();
 
     try {
+      setProgress('Validating export conditions...');
+
       // Validate export conditions
       const validation = PDFExportService.validateExportConditions(canvasRef.current);
       if (!validation.isValid) {
         throw new Error(`Export validation failed: ${validation.issues.join(', ')}`);
       }
+
+      setProgress('Preparing export data...');
 
       // Prepare metadata with current options
       const metadata: ProjectMetadata = {
@@ -85,12 +91,14 @@ export const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
       // Get optimal format if auto-detect is enabled
       const canvas = canvasRef.current;
       const optimalSettings = PDFExportService.getOptimalFormat(canvas.width, canvas.height);
-      
+
       const finalOptions: PDFExportOptions = {
         ...exportOptions,
         // Use optimal settings if format is auto
         ...(exportOptions.format === 'a4' && optimalSettings)
       };
+
+      setProgress('Generating PDF document...');
 
       // Export to PDF
       await PDFExportService.exportMapToPDF(canvas, metadata, finalOptions);
@@ -245,12 +253,19 @@ export const PDFExportDialog: React.FC<PDFExportDialogProps> = ({
           </Box>
 
           {/* Status Messages */}
+          {progress && loading && (
+            <Alert severity="info" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={20} />
+              {progress}
+            </Alert>
+          )}
+
           {error && (
             <Alert severity="error" onClose={clearMessages}>
               {error}
             </Alert>
           )}
-          
+
           {success && (
             <Alert severity="success" onClose={clearMessages}>
               {success}

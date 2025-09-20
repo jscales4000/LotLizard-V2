@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(env)",
+      "mcp__archon__health_check",
+      "mcp__archon__list_projects",
+      "mcp__archon__create_project",
+      "mcp__archon__perform_rag_query",
+      "mcp__archon__search_code_examples",
+      "mcp__archon__create_task",
+      "mcp__archon__list_tasks",
+      "mcp__archon__update_task",
+      "Bash(npm start)",
+      "Bash(findstr:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx kill-port:*)",
+      "mcp__archon__get_task",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

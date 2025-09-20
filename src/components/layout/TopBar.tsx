@@ -3,6 +3,7 @@ import { AppBar, Toolbar, Typography, IconButton, Box } from '@mui/material';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import { useMapStore } from '../../stores/mapStore';
+import lizardLogo from '../../assets/lizard-logo.png';
 
 const TopBar: React.FC = () => {
   const { scale, setScale } = useMapStore();
@@ -18,9 +19,21 @@ const TopBar: React.FC = () => {
   return (
     <AppBar position="static" color="default" elevation={1}>
       <Toolbar sx={{ minHeight: '60px' }}>
-        <Typography variant="h6" sx={{ flexGrow: 0, mr: 2 }}>
-          LotLizard V2
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+          <img 
+            src={lizardLogo}
+            alt="LotLizard Logo"
+            style={{
+              height: '32px',
+              width: 'auto',
+              marginRight: '8px',
+              transform: 'rotate(-5deg)'
+            }}
+          />
+          <Typography variant="h6" sx={{ flexGrow: 0 }}>
+            LotLizard V2
+          </Typography>
+        </Box>
 
         <Box sx={{ flexGrow: 1 }} />
         

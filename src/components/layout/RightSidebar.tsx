@@ -11,8 +11,11 @@ import {
   Typography,
   Divider,
   Paper,
-
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useEquipmentStore } from '../../stores/equipmentStore';
 import { EquipmentTemplate } from '../../services/equipmentService';
 import EquipmentList from '../equipment/EquipmentList';
@@ -23,6 +26,7 @@ const DRAWER_WIDTH = 372;
 
 const RightSidebar: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'equipment' | 'list' | 'properties'>('equipment');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['utility', 'mega-rides', 'rides']));
   const equipmentLibrary = useEquipmentStore(state => state.equipmentLibrary);
   const selectedIds = useEquipmentStore(state => state.selectedIds);
   const items = useEquipmentStore(state => state.items);
@@ -31,6 +35,16 @@ const RightSidebar: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: 'equipment' | 'list' | 'properties') => {
     setActiveTab(newValue);
+  };
+
+  const handleCategoryToggle = (category: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
+    }
+    setExpandedCategories(newExpanded);
   };
 
   // Format category names for display
@@ -95,83 +109,128 @@ const RightSidebar: React.FC = () => {
       )}
       
       {activeTab === 'equipment' && (
-        <Box sx={{ overflow: 'auto', p: 1 }}>
+        <Box sx={{ overflow: 'auto' }}>
           {Object.entries(groupedEquipment).map(([category, items]) => (
-            <Box key={category} sx={{ mb: 2 }}>
-              <Typography 
-                variant="subtitle2" 
-                sx={{ 
-                  fontWeight: 'bold',
-                  px: 1, 
-                  py: 0.5,
-                  bgcolor: 'background.default'
+            <Accordion 
+              key={category} 
+              expanded={expandedCategories.has(category)}
+              onChange={() => handleCategoryToggle(category)}
+              sx={{
+                '&:before': {
+                  display: 'none',
+                },
+                boxShadow: 'none',
+                borderBottom: '1px solid',
+                borderColor: 'divider'
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{
+                  minHeight: 48,
+                  '&.Mui-expanded': {
+                    minHeight: 48,
+                  },
+                  '& .MuiAccordionSummary-content': {
+                    margin: '8px 0',
+                    '&.Mui-expanded': {
+                      margin: '8px 0',
+                    },
+                  },
                 }}
               >
-                {formatCategoryName(category)} ({items.length})
-              </Typography>
-              <List dense disablePadding>
-                {(items as any[]).map((item: any) => (
-                  <ListItem key={item.id} disablePadding>
-                    <ListItemButton
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData('application/json', JSON.stringify({
-                          type: 'equipment',
-                          templateId: item.id,
-                          name: item.name,
-                          category: item.category,
-                          width: item.width,
-                          height: item.height,
-                          color: item.color
-                        }));
-                        e.dataTransfer.effectAllowed = 'copy';
-                      }}
-                      sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        borderLeft: `4px solid ${item.color}`,
-                        pl: 1,
-                        '&:hover': {
-                          bgcolor: 'action.hover'
-                        }
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          bgcolor: 'background.paper',
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          mr: 1,
-                          display: 'flex',
+                <Typography 
+                  variant="subtitle2" 
+                  sx={{ 
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}
+                >
+                  {formatCategoryName(category)}
+                  <Typography 
+                    component="span" 
+                    variant="caption" 
+                    sx={{ 
+                      bgcolor: 'primary.main',
+                      color: 'primary.contrastText',
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: 1,
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    {items.length}
+                  </Typography>
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <List dense disablePadding>
+                  {(items as any[]).map((item: any) => (
+                    <ListItem key={item.id} disablePadding>
+                      <ListItemButton
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('application/json', JSON.stringify({
+                            type: 'equipment',
+                            templateId: item.id,
+                            name: item.name,
+                            category: item.category,
+                            width: item.width,
+                            height: item.height,
+                            color: item.color
+                          }));
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
+                        sx={{ 
+                          display: 'flex', 
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          borderLeft: `4px solid ${item.color}`,
+                          pl: 1,
+                          '&:hover': {
+                            bgcolor: 'action.hover'
+                          }
                         }}
                       >
-                        <Box 
-                          sx={{ 
-                            width: 24, 
-                            height: 24, 
-                            bgcolor: item.color 
-                          }} 
+                        <Box
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            bgcolor: 'background.paper',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            mr: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Box 
+                            sx={{ 
+                              width: 24, 
+                              height: 24, 
+                              bgcolor: item.color 
+                            }} 
+                          />
+                        </Box>
+                        <ListItemText 
+                          primary={item.name} 
+                          secondary={
+                            item.shape === 'circle' && item.radius 
+                              ? `⌀${item.radius * 2} ft (radius: ${item.radius} ft)`
+                              : item.width && item.height 
+                              ? `${item.width} × ${item.height} ft`
+                              : 'Dimensions not specified'
+                          } 
                         />
-                      </Box>
-                      <ListItemText 
-                        primary={item.name} 
-                        secondary={
-                          item.shape === 'circle' && item.radius 
-                            ? `⌀${item.radius * 2} ft (radius: ${item.radius} ft)`
-                            : item.width && item.height 
-                            ? `${item.width} × ${item.height} ft`
-                            : 'Dimensions not specified'
-                        } 
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </AccordionDetails>
+            </Accordion>
           ))}
           
           {/* Equipment Library Management */}

@@ -7,19 +7,32 @@ import { useEquipmentStore } from '../stores/equipmentStore';
 export interface Project {
   id: string;
   name: string;
+  description?: string;
   createdAt: number;
   updatedAt: number;
   version: string;
   mapState: {
+    scale: number;
+    position: { x: number; y: number };
     imageUrl: string | null;
     pixelsPerMeter: number;
     calibrationPoints: any[];
     activeCalibrationLine: any | null;
     showGrid: boolean;
     gridSpacing: number;
+    gridColor: string;
+    showCalibrationLine: boolean;
+    showEquipmentLabels: boolean;
+    showClearanceZones: boolean;
   };
   equipmentState: {
     items: any[];
+    selectedIds: string[];
+  };
+  metadata: {
+    lastSaved: number;
+    autoSave: boolean;
+    tags: string[];
   };
 }
 
@@ -34,23 +47,36 @@ export class ProjectService {
   /**
    * Create a new project with default settings
    */
-  static createNewProject(name: string = 'Untitled Project'): Project {
+  static createNewProject(name: string = 'Untitled Project', description?: string): Project {
     const project: Project = {
       id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name,
+      description,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       version: this.PROJECT_VERSION,
       mapState: {
+        scale: 1.0,
+        position: { x: 0, y: 0 },
         imageUrl: null,
         pixelsPerMeter: 1,
         calibrationPoints: [],
         activeCalibrationLine: null,
         showGrid: true,
         gridSpacing: 3,
+        gridColor: '#333333',
+        showCalibrationLine: true,
+        showEquipmentLabels: true,
+        showClearanceZones: true,
       },
       equipmentState: {
         items: [],
+        selectedIds: [],
+      },
+      metadata: {
+        lastSaved: Date.now(),
+        autoSave: false,
+        tags: [],
       }
     };
 
@@ -76,15 +102,26 @@ export class ProjectService {
     // Update the project data
     project.updatedAt = Date.now();
     project.mapState = {
+      scale: mapState.scale,
+      position: mapState.position,
       imageUrl: mapState.imageUrl,
       pixelsPerMeter: mapState.pixelsPerMeter,
       calibrationPoints: mapState.calibrationPoints,
       activeCalibrationLine: mapState.activeCalibrationLine,
       showGrid: mapState.showGrid,
       gridSpacing: mapState.gridSpacing,
+      gridColor: mapState.gridColor,
+      showCalibrationLine: mapState.showCalibrationLine,
+      showEquipmentLabels: mapState.showEquipmentLabels,
+      showClearanceZones: mapState.showClearanceZones,
     };
     project.equipmentState = {
       items: equipmentState.items,
+      selectedIds: equipmentState.selectedIds,
+    };
+    project.metadata = {
+      ...project.metadata,
+      lastSaved: Date.now(),
     };
 
     // Save the project to local storage
@@ -107,26 +144,65 @@ export class ProjectService {
 
     // Update the map store
     const mapStore = useMapStore.getState();
+
+    // Set basic map state
+    mapStore.setScale(project.mapState.scale || 1.0);
+    mapStore.setPosition(project.mapState.position || { x: 0, y: 0 });
     mapStore.setImageUrl(project.mapState.imageUrl);
     mapStore.setPixelsPerMeter(project.mapState.pixelsPerMeter);
+
+    // Clear and restore calibration
     mapStore.clearCalibration();
-    if (project.mapState.activeCalibrationLine) {
-      // Need to properly reconstruct calibration
-      // This is simplified and would need to be expanded
+    if (project.mapState.calibrationPoints) {
+      project.mapState.calibrationPoints.forEach(point => {
+        mapStore.addCalibrationPoint(point);
+      });
     }
-    if (project.mapState.showGrid !== undefined) {
-      if (mapStore.showGrid !== project.mapState.showGrid) {
-        mapStore.toggleGrid();
-      }
-      mapStore.setGridSpacing(project.mapState.gridSpacing);
+    if (project.mapState.activeCalibrationLine) {
+      // Restore active calibration line and update pixels per meter
+      useMapStore.setState({
+        activeCalibrationLine: project.mapState.activeCalibrationLine,
+        pixelsPerMeter: project.mapState.activeCalibrationLine.pixelsPerMeter
+      });
+    }
+
+    // Restore display settings
+    if (project.mapState.showGrid !== mapStore.showGrid) {
+      mapStore.toggleGrid();
+    }
+    mapStore.setGridSpacing(project.mapState.gridSpacing || 3);
+
+    if (project.mapState.gridColor) {
+      useMapStore.setState({ gridColor: project.mapState.gridColor });
+    }
+
+    if (project.mapState.showCalibrationLine !== undefined && project.mapState.showCalibrationLine !== mapStore.showCalibrationLine) {
+      mapStore.toggleCalibrationLine();
+    }
+
+    if (project.mapState.showEquipmentLabels !== undefined && project.mapState.showEquipmentLabels !== mapStore.showEquipmentLabels) {
+      mapStore.toggleEquipmentLabels();
+    }
+
+    if (project.mapState.showClearanceZones !== undefined && project.mapState.showClearanceZones !== mapStore.showClearanceZones) {
+      mapStore.toggleClearanceZones();
     }
 
     // Update the equipment store
     const equipmentStore = useEquipmentStore.getState();
     equipmentStore.clearAll();
+
+    // Restore equipment items
     project.equipmentState.items.forEach(item => {
-      equipmentStore.addItem(item);
+      useEquipmentStore.setState(state => ({
+        items: [...state.items, { ...item, id: item.id || `restored-${Date.now()}-${Math.random().toString(36).substr(2, 5)}` }]
+      }));
     });
+
+    // Restore selection state
+    if (project.equipmentState.selectedIds) {
+      useEquipmentStore.setState({ selectedIds: project.equipmentState.selectedIds });
+    }
 
     // Set as current project
     this.setCurrentProject(project.id);
@@ -210,15 +286,123 @@ export class ProjectService {
    */
   static exportProject(projectId: string): string {
     const project = this.getProject(projectId) || this.getCurrentProject();
-    
+
     if (!project) {
       throw new Error('No project to export');
     }
 
     const jsonData = JSON.stringify(project, null, 2);
     const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(jsonData)}`;
-    
+
     return dataUri;
+  }
+
+  /**
+   * Save project to file system using File System Access API
+   */
+  static async saveProjectToFile(projectId?: string): Promise<void> {
+    const project = projectId ? this.getProject(projectId) : this.getCurrentProject();
+
+    if (!project) {
+      throw new Error('No project to save');
+    }
+
+    // Check if File System Access API is supported
+    if ('showSaveFilePicker' in window) {
+      try {
+        const fileHandle = await (window as any).showSaveFilePicker({
+          suggestedName: `${project.name.replace(/[^a-zA-Z0-9]/g, '_')}.lotlizard`,
+          types: [
+            {
+              description: 'LotLizard Project Files',
+              accept: {
+                'application/json': ['.lotlizard', '.json']
+              }
+            }
+          ]
+        });
+
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(project, null, 2));
+        await writable.close();
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          throw new Error('Failed to save project to file system');
+        }
+      }
+    } else {
+      // Fallback to download method
+      const dataUri = this.exportProject(projectId || project.id);
+      const link = document.createElement('a');
+      link.href = dataUri;
+      link.download = `${project.name.replace(/[^a-zA-Z0-9]/g, '_')}.lotlizard`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+
+  /**
+   * Open project from file system using File System Access API
+   */
+  static async openProjectFromFile(): Promise<Project | null> {
+    // Check if File System Access API is supported
+    if ('showOpenFilePicker' in window) {
+      try {
+        const [fileHandle] = await (window as any).showOpenFilePicker({
+          multiple: false,
+          types: [
+            {
+              description: 'LotLizard Project Files',
+              accept: {
+                'application/json': ['.lotlizard', '.json']
+              }
+            }
+          ]
+        });
+
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        const project = this.importProject(content);
+        return project;
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          throw new Error('Failed to open project from file system');
+        }
+        return null;
+      }
+    } else {
+      // Fallback to input element method
+      return new Promise((resolve, reject) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.lotlizard,.json';
+
+        input.onchange = (event) => {
+          const file = (event.target as HTMLInputElement).files?.[0];
+          if (!file) {
+            resolve(null);
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const content = e.target?.result as string;
+              const project = this.importProject(content);
+              resolve(project);
+            } catch (error) {
+              reject(new Error('Failed to import project: Invalid format'));
+            }
+          };
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsText(file);
+        };
+
+        input.oncancel = () => resolve(null);
+        input.click();
+      });
+    }
   }
 
   /**
@@ -255,5 +439,96 @@ export class ProjectService {
     return projects
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 5);
+  }
+
+  /**
+   * Delete a project by ID
+   */
+  static deleteProject(projectId: string): boolean {
+    const projects = this.getAllProjects();
+    const filteredProjects = projects.filter(p => p.id !== projectId);
+
+    if (filteredProjects.length === projects.length) {
+      return false; // Project not found
+    }
+
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredProjects));
+
+    // Clear current project if it was the deleted one
+    if (this.getCurrentProjectId() === projectId) {
+      this.setCurrentProject(null);
+    }
+
+    return true;
+  }
+
+  /**
+   * Duplicate a project
+   */
+  static duplicateProject(projectId: string, newName?: string): Project | null {
+    const originalProject = this.getProject(projectId);
+    if (!originalProject) {
+      return null;
+    }
+
+    const duplicatedProject: Project = {
+      ...originalProject,
+      id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: newName || `${originalProject.name} (Copy)`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      metadata: {
+        ...originalProject.metadata,
+        lastSaved: Date.now(),
+      }
+    };
+
+    this.saveProject(duplicatedProject);
+    return duplicatedProject;
+  }
+
+  /**
+   * Auto-save current state if auto-save is enabled
+   */
+  static autoSave(): void {
+    const currentProject = this.getCurrentProject();
+    if (currentProject && currentProject.metadata.autoSave) {
+      this.saveCurrentState();
+    }
+  }
+
+  /**
+   * Get project statistics
+   */
+  static getProjectStats(projectId: string): {
+    equipmentCount: number;
+    totalArea: number;
+    lastModified: string;
+    hasCalibration: boolean;
+  } | null {
+    const project = this.getProject(projectId);
+    if (!project) {
+      return null;
+    }
+
+    return {
+      equipmentCount: project.equipmentState.items.length,
+      totalArea: 0, // Could calculate based on equipment footprints
+      lastModified: new Date(project.updatedAt).toLocaleDateString(),
+      hasCalibration: !!project.mapState.activeCalibrationLine,
+    };
+  }
+
+  /**
+   * Search projects by name or description
+   */
+  static searchProjects(query: string): Project[] {
+    const projects = this.getAllProjects();
+    const searchTerm = query.toLowerCase();
+
+    return projects.filter(project =>
+      project.name.toLowerCase().includes(searchTerm) ||
+      (project.description && project.description.toLowerCase().includes(searchTerm))
+    );
   }
 }

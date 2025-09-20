@@ -1015,10 +1015,60 @@ const MapCanvas: React.FC = () => {
       // Ctrl+S to save project
       if (event.key.toLowerCase() === 's' && event.ctrlKey) {
         event.preventDefault();
-        // TODO: Implement project saving functionality
-        console.log('Save project');
-        // This is a placeholder for future integration
-        // For MVP, we can show a notification that this will be available soon
+        try {
+          import('../../services/projectService').then(({ ProjectService }) => {
+            const project = ProjectService.saveCurrentState();
+            console.log('Project saved:', project.name);
+
+            // Show success notification
+            const notification = document.createElement('div');
+            notification.textContent = `Project "${project.name}" saved successfully!`;
+            notification.style.cssText = `
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              background: #4CAF50;
+              color: white;
+              padding: 12px 20px;
+              border-radius: 4px;
+              z-index: 10000;
+              font-family: Arial, sans-serif;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+              if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+              }
+            }, 3000);
+          }).catch(error => {
+            console.error('Failed to save project:', error);
+
+            // Show error notification
+            const notification = document.createElement('div');
+            notification.textContent = 'Failed to save project. Please try again.';
+            notification.style.cssText = `
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              background: #f44336;
+              color: white;
+              padding: 12px 20px;
+              border-radius: 4px;
+              z-index: 10000;
+              font-family: Arial, sans-serif;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+              if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+              }
+            }, 3000);
+          });
+        } catch (error) {
+          console.error('Failed to import ProjectService:', error);
+        }
         return;
       }
       

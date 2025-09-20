@@ -98,17 +98,50 @@ export class PDFExportService {
         currentY += 10;
       }
 
-      // Capture canvas as image
+      // Capture canvas as image with enhanced options
       const canvas = await html2canvas(canvasElement, {
         backgroundColor: '#121212',
         scale: quality,
         useCORS: true,
         allowTaint: true,
-        logging: false
+        logging: false,
+        width: canvasElement.width,
+        height: canvasElement.height,
+        windowWidth: canvasElement.width,
+        windowHeight: canvasElement.height,
+        onclone: (clonedDoc) => {
+          // Ensure fonts are loaded in cloned document
+          clonedDoc.fonts?.ready?.then(() => {
+            console.log('Fonts loaded for PDF export');
+          }).catch(() => {
+            console.warn('Font loading failed, proceeding with export');
+          });
+        }
       });
 
-      // Convert canvas to data URL
-      const imgData = canvas.toDataURL('image/png', quality);
+      // Validate captured canvas
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error('html2canvas failed to capture valid image');
+      }
+
+      // Check for reasonable size limits
+      const maxPixels = 16777216; // 4096x4096 max
+      if (canvas.width * canvas.height > maxPixels) {
+        throw new Error('Captured image too large for PDF export');
+      }
+
+      // Convert canvas to data URL with error handling
+      let imgData: string;
+      try {
+        imgData = canvas.toDataURL('image/png', quality);
+
+        // Validate data URL
+        if (!imgData || !imgData.startsWith('data:image/')) {
+          throw new Error('Invalid image data generated');
+        }
+      } catch (err) {
+        throw new Error('Failed to convert canvas to image data');
+      }
 
       // Calculate image dimensions to fit in content area
       const canvasAspectRatio = canvas.width / canvas.height;
@@ -156,7 +189,25 @@ export class PDFExportService {
 
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      throw new Error(`Failed to export PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      // Provide more specific error messages
+      let errorMessage = 'Failed to export PDF';
+
+      if (error instanceof Error) {
+        if (error.message.includes('html2canvas')) {
+          errorMessage = 'Failed to capture canvas image. Please try a lower quality setting.';
+        } else if (error.message.includes('jsPDF')) {
+          errorMessage = 'PDF generation failed. Please check your browser compatibility.';
+        } else if (error.message.includes('Memory')) {
+          errorMessage = 'Not enough memory to export. Try reducing quality or canvas size.';
+        } else if (error.message.includes('CORS')) {
+          errorMessage = 'Cross-origin error. Some images may not be included in the export.';
+        } else {
+          errorMessage = `Export failed: ${error.message}`;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
   }
 
@@ -418,10 +469,45 @@ export class PDFExportService {
 
     if (!canvasElement) {
       issues.push('Canvas element not found');
+      return { isValid: false, issues };
     }
 
-    if (canvasElement && (canvasElement.width === 0 || canvasElement.height === 0)) {
+    if (canvasElement.width === 0 || canvasElement.height === 0) {
       issues.push('Canvas has no content to export');
+    }
+
+    if (canvasElement.width > 10000 || canvasElement.height > 10000) {
+      issues.push('Canvas size too large for PDF export (max 10000x10000)');
+    }
+
+    // Check if canvas is empty/blank
+    try {
+      const ctx = canvasElement.getContext('2d');
+      if (ctx) {
+        const imageData = ctx.getImageData(0, 0, Math.min(canvasElement.width, 100), Math.min(canvasElement.height, 100));
+        const data = imageData.data;
+        let hasContent = false;
+
+        // Check for non-transparent pixels in a sample area
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] > 0) { // Alpha channel
+            hasContent = true;
+            break;
+          }
+        }
+
+        if (!hasContent) {
+          issues.push('Canvas appears to be empty');
+        }
+      }
+    } catch (error) {
+      // If we can't check content, that's okay - may be cross-origin
+      console.warn('Could not verify canvas content:', error);
+    }
+
+    // Check if browser supports required APIs
+    if (typeof HTMLCanvasElement === 'undefined') {
+      issues.push('Canvas API not supported in this browser');
     }
 
     return {

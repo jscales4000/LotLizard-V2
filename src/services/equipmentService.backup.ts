@@ -65,7 +65,7 @@ export class EquipmentService {
         turnAroundTime: 0
       },
       
-      // Professional Carnival Rides - From Exported Equipment Library 2025-08-13
+      // Professional Carnival Rides - From Corrected Equipment Library
       {
         id: 'bounce',
         name: 'Bounce',
@@ -87,10 +87,9 @@ export class EquipmentService {
       {
         id: 'century-wheel',
         name: 'Century Wheel',
-        category: 'mega-rides' as EquipmentCategory,
-        shape: 'rectangle' as const,
-        width: 53,
-        height: 45,
+        category: 'rides' as EquipmentCategory,
+        shape: 'circle' as const,
+        radius: 32.5,
         color: '#4ECDC4',
         description: 'Century Wheel - Ferris wheel, 65-70 feet tall with 15 gondolas',
         clearanceRadius: 12,
@@ -103,9 +102,8 @@ export class EquipmentService {
         id: 'cliffhanger',
         name: 'Cliffhanger',
         category: 'rides' as EquipmentCategory,
-        shape: 'rectangle' as const,
-        width: 64,
-        height: 70,
+        shape: 'circle' as const,
+        radius: 37.5,
         color: '#45B7D1',
         description: 'Cliffhanger - Hang gliding simulation ride with hydraulic lift',
         clearanceRadius: 15,
@@ -135,10 +133,9 @@ export class EquipmentService {
       {
         id: 'euro-wheel',
         name: 'Euro Wheel',
-        category: 'mega-rides' as EquipmentCategory,
-        shape: 'rectangle' as const,
-        width: 48,
-        height: 22,
+        category: 'rides' as EquipmentCategory,
+        shape: 'circle' as const,
+        radius: 24,
         color: '#98D8C8',
         description: 'Euro Wheel - Ferris wheel, smaller than Century Wheel',
         clearanceRadius: 7,
@@ -168,9 +165,9 @@ export class EquipmentService {
       {
         id: 'freak-out',
         name: 'Freak Out',
-        category: 'mega-rides' as EquipmentCategory,
+        category: 'rides' as EquipmentCategory,
         shape: 'rectangle' as const,
-        width: 46,
+        width: 48,
         height: 56,
         color: '#BB8FCE',
         description: 'Freak Out - Pendulum thrill ride',
@@ -186,10 +183,10 @@ export class EquipmentService {
       {
         id: 'himalaya',
         name: 'Himalaya',
-        category: 'mega-rides' as EquipmentCategory,
+        category: 'rides' as EquipmentCategory,
         shape: 'rectangle' as const,
         width: 55,
-        height: 48,
+        height: 46,
         color: '#F8C471',
         description: 'Himalaya - High-speed spinning ride with cars on undulating track',
         clearanceLeft: 22,
@@ -295,8 +292,9 @@ export class EquipmentService {
         id: 'starship',
         name: 'Starship',
         category: 'rides' as EquipmentCategory,
-        shape: 'circle' as const,
-        radius: 80,
+        shape: 'rectangle' as const,
+        width: 46,
+        height: 4,
         color: '#A9CCE3',
         description: 'Starship - Space-themed ride attraction',
         clearanceLeft: 10,
@@ -363,8 +361,8 @@ export class EquipmentService {
         name: 'Wacky Shack',
         category: 'rides' as EquipmentCategory,
         shape: 'rectangle' as const,
-        width: 50,
-        height: 60,
+        width: 40,
+        height: 16,
         color: '#AED6F1',
         description: 'Wacky Shack - Dark ride/funhouse attraction',
         clearanceLeft: 9,
@@ -408,7 +406,8 @@ export class EquipmentService {
         verticalHeight: 56,
         turnAroundTime: 3
       },
-      {
+      
+      {        
         id: 'fury',
         name: 'Fury',
         category: 'rides' as EquipmentCategory,
@@ -467,8 +466,8 @@ export class EquipmentService {
         name: 'Raiders',
         category: 'rides' as EquipmentCategory,
         shape: 'rectangle' as const,
-        width: 70,
-        height: 22,
+        width: 60,
+        height: 18,
         color: '#00B894',
         description: 'Raiders - Professional amusement ride',
         clearanceLeft: 6,
@@ -483,10 +482,10 @@ export class EquipmentService {
       {
         id: 'rockstar',
         name: 'Rockstar',
-        category: 'mega-rides' as EquipmentCategory,
+        category: 'rides' as EquipmentCategory,
         shape: 'rectangle' as const,
         width: 50,
-        height: 26,
+        height: 24,
         color: '#E17055',
         description: 'Rockstar - Professional amusement ride',
         clearanceLeft: 10,
@@ -519,9 +518,9 @@ export class EquipmentService {
       {
         id: 'speedway',
         name: 'Speedway',
-        category: 'kiddy-rides' as EquipmentCategory,
+        category: 'rides' as EquipmentCategory,
         shape: 'rectangle' as const,
-        width: 38,
+        width: 55,
         height: 22,
         color: '#A29BFE',
         description: 'Speedway - Professional amusement ride',
@@ -534,6 +533,8 @@ export class EquipmentService {
         verticalHeight: 28,
         turnAroundTime: 3
       },
+      
+      // Kiddy Rides
       {
         id: 'dizzy-dragon',
         name: 'Dizzy Dragon',
