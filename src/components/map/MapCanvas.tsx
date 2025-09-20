@@ -826,28 +826,21 @@ const MapCanvas: React.FC = () => {
     
     const gridSpacingPixels = gridSpacing * pixelsPerMeter * scale;
 
-    // Lower the minimum threshold and add a fallback for uncalibrated maps
-    const effectivePixelsPerMeter = pixelsPerMeter === 1 ? 50 : pixelsPerMeter;
-    const adjustedGridSpacingPixels = gridSpacing * effectivePixelsPerMeter * scale;
-
-    if (adjustedGridSpacingPixels < 5) {
+    if (gridSpacingPixels < 5) {
       ctx.restore();
       return;
     }
-    
-    // Use the adjusted grid spacing for drawing
-    const finalGridSpacing = adjustedGridSpacingPixels;
-    const offsetX = position.x % finalGridSpacing;
-    const offsetY = position.y % finalGridSpacing;
+    const offsetX = position.x % gridSpacingPixels;
+    const offsetY = position.y % gridSpacingPixels;
 
-    for (let x = offsetX; x < canvas.width + finalGridSpacing; x += finalGridSpacing) {
+    for (let x = offsetX; x < canvas.width + gridSpacingPixels; x += gridSpacingPixels) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvas.height);
       ctx.stroke();
     }
 
-    for (let y = offsetY; y < canvas.height + finalGridSpacing; y += finalGridSpacing) {
+    for (let y = offsetY; y < canvas.height + gridSpacingPixels; y += gridSpacingPixels) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(canvas.width, y);
