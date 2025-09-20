@@ -835,8 +835,8 @@ const MapCanvas: React.FC = () => {
       return;
     }
     
-    // Use the actual grid spacing for drawing, fallback only for visibility check
-    const finalGridSpacing = pixelsPerMeter === 1 ? adjustedGridSpacingPixels : gridSpacingPixels;
+    // Use the adjusted grid spacing for drawing
+    const finalGridSpacing = adjustedGridSpacingPixels;
     const offsetX = position.x % finalGridSpacing;
     const offsetY = position.y % finalGridSpacing;
 
