@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -18,7 +18,6 @@ import {
   CheckCircle as CompleteIcon,
   SkipNext as SkipIcon
 } from '@mui/icons-material';
-import { useOnboardingStore } from '../../stores/onboardingStore';
 import { OnboardingService } from '../../services/onboardingService';
 
 interface OnboardingOverlayProps {
@@ -47,6 +46,37 @@ export const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   // Calculate progress
   const progress = ((currentStepIndex + 1) / flow.steps.length) * 100;
 
+  const clearHighlight = useCallback(() => {
+    // Remove existing highlights
+    document.querySelectorAll('.onboarding-highlight').forEach(el => {
+      el.classList.remove('onboarding-highlight');
+    });
+    setHighlightElement(null);
+  }, []);
+
+  const highlightTarget = useCallback((element: HTMLElement) => {
+    element.classList.add('onboarding-highlight');
+
+    // Scroll element into view if needed
+    element.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'center'
+    });
+  }, []);
+
+  const updateHighlight = useCallback(() => {
+    clearHighlight();
+
+    if (currentStep?.target) {
+      const element = document.querySelector(currentStep.target) as HTMLElement;
+      if (element) {
+        setHighlightElement(element);
+        highlightTarget(element);
+      }
+    }
+  }, [currentStep, clearHighlight, highlightTarget]);
+
   useEffect(() => {
     if (open) {
       setIsVisible(true);
@@ -55,42 +85,12 @@ export const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
       setIsVisible(false);
       clearHighlight();
     }
-  }, [open, currentStepIndex]);
+  }, [open, currentStepIndex, updateHighlight, clearHighlight]);
 
   useEffect(() => {
     updateHighlight();
-  }, [currentStep]);
+  }, [updateHighlight]);
 
-  const updateHighlight = () => {
-    clearHighlight();
-    
-    if (currentStep?.target) {
-      const element = document.querySelector(currentStep.target) as HTMLElement;
-      if (element) {
-        setHighlightElement(element);
-        highlightTarget(element);
-      }
-    }
-  };
-
-  const clearHighlight = () => {
-    // Remove existing highlights
-    document.querySelectorAll('.onboarding-highlight').forEach(el => {
-      el.classList.remove('onboarding-highlight');
-    });
-    setHighlightElement(null);
-  };
-
-  const highlightTarget = (element: HTMLElement) => {
-    element.classList.add('onboarding-highlight');
-    
-    // Scroll element into view if needed
-    element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-      inline: 'center'
-    });
-  };
 
   const getTooltipPosition = () => {
     if (!highlightElement || !currentStep?.position) {
