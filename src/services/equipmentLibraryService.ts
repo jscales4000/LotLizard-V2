@@ -262,19 +262,40 @@ export class EquipmentLibraryService {
         try {
           const text = await file.text();
           const data = JSON.parse(text);
-          
-          // Validate the imported data structure
-          if (!data.template || typeof data.template !== 'object') {
-            throw new Error('Invalid template file format');
+
+          // Debug: Log the imported data structure
+          console.log('Imported template data structure:', data);
+          console.log('Has template property:', 'template' in data);
+          console.log('Has templates property:', 'templates' in data);
+          console.log('Template type:', typeof data.template);
+
+          let template: any;
+
+          // Handle both single template format and equipment library format
+          if (data.template && typeof data.template === 'object') {
+            // Single template format: { template: {...} }
+            template = data.template;
+            console.log('Importing single template format');
+          } else if (data.templates && Array.isArray(data.templates) && data.templates.length > 0) {
+            // Equipment library format: { templates: [...] } - take the first template
+            template = data.templates[0];
+            console.log('Importing from equipment library format (using first template)');
+          } else {
+            console.error('Template validation failed - data structure:', data);
+            throw new Error('Invalid template file format. Expected either { template: {...} } or { templates: [...] }');
           }
           
-          const template = data.template;
-          
+          // Debug: Log template before validation
+          console.log('Template to validate:', template);
+
           // Validate the template structure
           if (!this.validateTemplate(template)) {
-            throw new Error('Invalid template structure');
+            console.error('Template validation failed for:', template);
+            throw new Error('Invalid template structure - check console for details');
           }
-          
+
+          console.log('Template validation passed successfully');
+
           // Mark as custom template since it's being imported
           template.isCustom = true;
           
@@ -310,18 +331,45 @@ export class EquipmentLibraryService {
    * Validate equipment template structure
    */
   static validateTemplate(template: any): template is EquipmentTemplate {
-    return (
-      typeof template === 'object' &&
-      typeof template.id === 'string' &&
-      typeof template.name === 'string' &&
-      typeof template.category === 'string' &&
-      typeof template.color === 'string' &&
-      typeof template.description === 'string' &&
-      typeof template.capacity === 'number' &&
-      typeof template.weight === 'number' &&
-      typeof template.verticalHeight === 'number' &&
-      typeof template.turnAroundTime === 'number' &&
-      (template.shape === 'rectangle' || template.shape === 'circle')
-    );
+    const validCategories = ['mega-rides', 'rides', 'kiddy-rides', 'food', 'games', 'equipment', 'office', 'home', 'bunks', 'utility', 'custom'];
+
+    try {
+      // Basic required fields
+      const basicValidation = (
+        typeof template === 'object' &&
+        template !== null &&
+        typeof template.id === 'string' &&
+        typeof template.name === 'string' &&
+        typeof template.category === 'string' &&
+        validCategories.includes(template.category) &&
+        typeof template.color === 'string' &&
+        typeof template.description === 'string' &&
+        typeof template.capacity === 'number' &&
+        typeof template.weight === 'number' &&
+        typeof template.verticalHeight === 'number' &&
+        typeof template.turnAroundTime === 'number' &&
+        (template.shape === 'rectangle' || template.shape === 'circle')
+      );
+
+      if (!basicValidation) {
+        console.log('Basic validation failed for template:', template);
+        return false;
+      }
+
+      // Shape-specific validation
+      const shapeValidation = template.shape === 'rectangle'
+        ? (typeof template.width === 'number' && typeof template.height === 'number')
+        : (typeof template.radius === 'number');
+
+      if (!shapeValidation) {
+        console.log('Shape validation failed for template:', template);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Template validation error:', error);
+      return false;
+    }
   }
 }
