@@ -154,7 +154,10 @@ export const useMapStore = create<MapState>((set, get) => ({
   // Grid actions
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
   toggleCalibrationLine: () => set((state) => ({ showCalibrationLine: !state.showCalibrationLine })),
-  setGridSpacing: (spacing) => set({ gridSpacing: spacing }),
+  setGridSpacing: (spacing) => set({
+    gridSpacing: spacing,
+    gridSpacingFeet: Math.round(spacing / 0.3048) // Convert meters to feet
+  }),
   setGridSpacingFeet: (spacingFeet) => set({
     gridSpacingFeet: spacingFeet,
     gridSpacing: spacingFeet * 0.3048 // Convert feet to meters
