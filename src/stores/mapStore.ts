@@ -16,8 +16,10 @@ interface MapState {
   
   // Grid settings
   showGrid: boolean;
-  gridSpacing: number; // in meters
+  gridSpacing: number; // in feet (converted to meters internally)
+  gridSpacingFeet: number; // display value in feet
   gridColor: string;
+  gridOpacity: number; // 0.0 to 1.0
   
   // Calibration settings
   showCalibrationLine: boolean;
@@ -44,6 +46,9 @@ interface MapState {
   toggleGrid: () => void;
   toggleCalibrationLine: () => void;
   setGridSpacing: (spacing: number) => void;
+  setGridSpacingFeet: (spacingFeet: number) => void;
+  setGridColor: (color: string) => void;
+  setGridOpacity: (opacity: number) => void;
   
   // Equipment display actions
   toggleEquipmentLabels: () => void;
@@ -74,8 +79,10 @@ export const useMapStore = create<MapState>((set, get) => ({
   
   // Grid settings
   showGrid: true,
-  gridSpacing: 3, // 3 meters (approximately 10 feet)
+  gridSpacing: 3.048, // 10 feet in meters (10 * 0.3048)
+  gridSpacingFeet: 10, // 10 feet display value
   gridColor: '#333333',
+  gridOpacity: 0.3,
   
   // Calibration settings
   showCalibrationLine: true,
@@ -148,6 +155,12 @@ export const useMapStore = create<MapState>((set, get) => ({
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
   toggleCalibrationLine: () => set((state) => ({ showCalibrationLine: !state.showCalibrationLine })),
   setGridSpacing: (spacing) => set({ gridSpacing: spacing }),
+  setGridSpacingFeet: (spacingFeet) => set({
+    gridSpacingFeet: spacingFeet,
+    gridSpacing: spacingFeet * 0.3048 // Convert feet to meters
+  }),
+  setGridColor: (color) => set({ gridColor: color }),
+  setGridOpacity: (opacity) => set({ gridOpacity: opacity }),
   
   // Equipment display actions
   toggleEquipmentLabels: () => set((state) => ({ showEquipmentLabels: !state.showEquipmentLabels })),

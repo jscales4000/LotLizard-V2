@@ -18,6 +18,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Grid,
+  Paper,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -34,7 +36,6 @@ interface SettingsDrawerProps {
 
 const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
   const [units, setUnits] = useState('feet');
-  const [gridSize, setGridSize] = useState(10);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [showCoordinates, setShowCoordinates] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
@@ -42,15 +43,21 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
   const [theme, setTheme] = useState('dark');
   const [language, setLanguage] = useState('english');
   
-  const { 
-    showGrid, 
-    toggleGrid, 
-    showCalibrationLine, 
+  const {
+    showGrid,
+    toggleGrid,
+    showCalibrationLine,
     toggleCalibrationLine,
     showEquipmentLabels,
     toggleEquipmentLabels,
     showClearanceZones,
-    toggleClearanceZones
+    toggleClearanceZones,
+    gridSpacingFeet,
+    setGridSpacingFeet,
+    gridColor,
+    setGridColor,
+    gridOpacity,
+    setGridOpacity
   } = useMapStore();
 
   const { startOnboarding } = useOnboardingStore();
@@ -132,7 +139,96 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
                   }
                   label="Show Grid"
                 />
-                
+
+                {/* Grid Configuration */}
+                {showGrid && (
+                  <Box sx={{ ml: 2, mt: 1, p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
+                      Grid Settings
+                    </Typography>
+
+                    {/* Grid Size */}
+                    <Box sx={{ mb: 2 }}>
+                      <Typography gutterBottom>Grid Spacing: {gridSpacingFeet}ft</Typography>
+                      <Slider
+                        value={gridSpacingFeet}
+                        onChange={(e, newValue) => setGridSpacingFeet(newValue as number)}
+                        min={5}
+                        max={50}
+                        step={5}
+                        marks={[
+                          { value: 5, label: '5ft' },
+                          { value: 10, label: '10ft' },
+                          { value: 25, label: '25ft' },
+                          { value: 50, label: '50ft' }
+                        ]}
+                        valueLabelDisplay="auto"
+                        valueLabelFormat={(value) => `${value}ft`}
+                      />
+                    </Box>
+
+                    {/* Grid Color */}
+                    <Box sx={{ mb: 2 }}>
+                      <Typography gutterBottom>Grid Color</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <input
+                          type="color"
+                          value={gridColor}
+                          onChange={(e) => setGridColor(e.target.value)}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          {gridColor.toUpperCase()}
+                        </Typography>
+                      </Box>
+
+                      {/* Preset colors */}
+                      <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                        {['#333333', '#666666', '#999999', '#cccccc', '#ffffff', '#ff0000', '#00ff00', '#0000ff'].map((color) => (
+                          <Paper
+                            key={color}
+                            sx={{
+                              width: 24,
+                              height: 24,
+                              bgcolor: color,
+                              cursor: 'pointer',
+                              border: gridColor === color ? '2px solid #1976d2' : '1px solid rgba(255,255,255,0.12)',
+                              borderRadius: 1
+                            }}
+                            onClick={() => setGridColor(color)}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+
+                    {/* Grid Opacity */}
+                    <Box>
+                      <Typography gutterBottom>Grid Opacity: {Math.round(gridOpacity * 100)}%</Typography>
+                      <Slider
+                        value={gridOpacity}
+                        onChange={(e, newValue) => setGridOpacity(newValue as number)}
+                        min={0.1}
+                        max={1.0}
+                        step={0.1}
+                        marks={[
+                          { value: 0.1, label: '10%' },
+                          { value: 0.3, label: '30%' },
+                          { value: 0.5, label: '50%' },
+                          { value: 1.0, label: '100%' }
+                        ]}
+                        valueLabelDisplay="auto"
+                        valueLabelFormat={(value) => `${Math.round(value * 100)}%`}
+                      />
+                    </Box>
+                  </Box>
+                )}
+
                 <FormControlLabel
                   control={
                     <Switch
@@ -172,20 +268,6 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
                   }
                   label="Show Coordinates"
                 />
-
-                <Box>
-                  <Typography gutterBottom>Grid Size</Typography>
-                  <Slider
-                    value={gridSize}
-                    onChange={(e, newValue) => setGridSize(newValue as number)}
-                    min={5}
-                    max={50}
-                    step={5}
-                    marks
-                    valueLabelDisplay="auto"
-                    valueLabelFormat={(value) => `${value}ft`}
-                  />
-                </Box>
               </Box>
             </AccordionDetails>
           </Accordion>

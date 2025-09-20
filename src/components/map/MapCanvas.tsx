@@ -28,6 +28,7 @@ const MapCanvas: React.FC = () => {
     showCalibrationLine,
     gridSpacing,
     gridColor,
+    gridOpacity,
     showEquipmentLabels,
     showClearanceZones
   } = useMapStore();
@@ -821,7 +822,7 @@ const MapCanvas: React.FC = () => {
     ctx.save();
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.3;
+    ctx.globalAlpha = gridOpacity;
     
     const gridSpacingPixels = gridSpacing * pixelsPerMeter * scale;
     
@@ -848,7 +849,7 @@ const MapCanvas: React.FC = () => {
     }
     
     ctx.restore();
-  }, [showGrid, pixelsPerMeter, scale, position, gridSpacing, gridColor]);
+  }, [showGrid, pixelsPerMeter, scale, position, gridSpacing, gridColor, gridOpacity]);
 
   // Draw on canvas
   useEffect(() => {

@@ -20,7 +20,9 @@ export interface Project {
     activeCalibrationLine: any | null;
     showGrid: boolean;
     gridSpacing: number;
+    gridSpacingFeet: number;
     gridColor: string;
+    gridOpacity: number;
     showCalibrationLine: boolean;
     showEquipmentLabels: boolean;
     showClearanceZones: boolean;
@@ -63,8 +65,10 @@ export class ProjectService {
         calibrationPoints: [],
         activeCalibrationLine: null,
         showGrid: true,
-        gridSpacing: 3,
+        gridSpacing: 3.048,
+        gridSpacingFeet: 10,
         gridColor: '#333333',
+        gridOpacity: 0.3,
         showCalibrationLine: true,
         showEquipmentLabels: true,
         showClearanceZones: true,
@@ -110,7 +114,9 @@ export class ProjectService {
       activeCalibrationLine: mapState.activeCalibrationLine,
       showGrid: mapState.showGrid,
       gridSpacing: mapState.gridSpacing,
+      gridSpacingFeet: mapState.gridSpacingFeet,
       gridColor: mapState.gridColor,
+      gridOpacity: mapState.gridOpacity,
       showCalibrationLine: mapState.showCalibrationLine,
       showEquipmentLabels: mapState.showEquipmentLabels,
       showClearanceZones: mapState.showClearanceZones,
@@ -170,10 +176,19 @@ export class ProjectService {
     if (project.mapState.showGrid !== mapStore.showGrid) {
       mapStore.toggleGrid();
     }
-    mapStore.setGridSpacing(project.mapState.gridSpacing || 3);
+    mapStore.setGridSpacing(project.mapState.gridSpacing || 3.048);
+
+    // Handle new grid properties with backward compatibility
+    if (project.mapState.gridSpacingFeet !== undefined) {
+      mapStore.setGridSpacingFeet(project.mapState.gridSpacingFeet);
+    }
 
     if (project.mapState.gridColor) {
-      useMapStore.setState({ gridColor: project.mapState.gridColor });
+      mapStore.setGridColor(project.mapState.gridColor);
+    }
+
+    if (project.mapState.gridOpacity !== undefined) {
+      mapStore.setGridOpacity(project.mapState.gridOpacity);
     }
 
     if (project.mapState.showCalibrationLine !== undefined && project.mapState.showCalibrationLine !== mapStore.showCalibrationLine) {
