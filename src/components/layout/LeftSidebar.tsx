@@ -20,6 +20,7 @@ import GridOffIcon from '@mui/icons-material/GridOff';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ImageSearchIcon from '@mui/icons-material/ImageSearch';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -50,17 +51,19 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const [selectedTool, setSelectedTool] = React.useState<string>('select');
   const [isPanningModeActive, setIsPanningModeActive] = React.useState<boolean>(false);
   
-  const { 
-    isCalibrationMode, 
-    toggleCalibrationMode, 
-    showGrid, 
+  const {
+    isCalibrationMode,
+    toggleCalibrationMode,
+    showGrid,
     toggleGrid,
     zoomIn,
     zoomOut,
     zoomToFit,
     scale,
     setIsPanningMode,
-    isPanningMode
+    isPanningMode,
+    isPerimeterMode,
+    togglePerimeterMode
   } = useMapStore();
   
   const { 
@@ -88,6 +91,9 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
       if (isCalibrationMode) {
         toggleCalibrationMode();
       }
+      if (isPerimeterMode) {
+        togglePerimeterMode();
+      }
       if (tool === 'pan') {
         setIsPanningMode(false);
         setIsPanningModeActive(false);
@@ -101,24 +107,45 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
         if (!isCalibrationMode) {
           toggleCalibrationMode();
         }
-        // Ensure panning mode is off when calibrating
+        // Ensure other modes are off when calibrating
         setIsPanningMode(false);
         setIsPanningModeActive(false);
-      } 
+        if (isPerimeterMode) {
+          togglePerimeterMode();
+        }
+      }
+      // Handle perimeter tool
+      else if (tool === 'perimeter') {
+        if (!isPerimeterMode) {
+          togglePerimeterMode();
+        }
+        // Ensure other modes are off when using perimeter
+        setIsPanningMode(false);
+        setIsPanningModeActive(false);
+        if (isCalibrationMode) {
+          toggleCalibrationMode();
+        }
+      }
       // Handle pan/move tool
       else if (tool === 'pan') {
         // Enable panning mode
         setIsPanningMode(true);
         setIsPanningModeActive(true);
-        // Ensure calibration mode is off when panning
+        // Ensure other modes are off when panning
         if (isCalibrationMode) {
           toggleCalibrationMode();
         }
+        if (isPerimeterMode) {
+          togglePerimeterMode();
+        }
       } 
       else {
-        // If switching to another tool, exit calibration mode and panning mode
+        // If switching to another tool, exit all modes
         if (isCalibrationMode) {
           toggleCalibrationMode();
+        }
+        if (isPerimeterMode) {
+          togglePerimeterMode();
         }
         if (isPanningModeActive) {
           setIsPanningMode(false);
@@ -297,10 +324,10 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
           
           <Tooltip title="Calibrate Scale" placement="right" arrow>
             <ListItem disablePadding>
-              <ListItemButton 
+              <ListItemButton
                 selected={selectedTool === 'calibrate'}
                 onClick={() => handleToolSelect('calibrate')}
-                sx={{ 
+                sx={{
                   justifyContent: 'center',
                   minHeight: 48,
                   px: 1,
@@ -309,6 +336,25 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
               >
                 <ListItemIcon sx={{ minWidth: 0 }}>
                   <SquareFootIcon color={isCalibrationMode ? 'warning' : 'inherit'} />
+                </ListItemIcon>
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
+
+          <Tooltip title="Draw Perimeter" placement="right" arrow>
+            <ListItem disablePadding>
+              <ListItemButton
+                selected={selectedTool === 'perimeter'}
+                onClick={() => handleToolSelect('perimeter')}
+                sx={{
+                  justifyContent: 'center',
+                  minHeight: 48,
+                  px: 1,
+                  bgcolor: isPerimeterMode ? 'rgba(156, 39, 176, 0.2)' : 'transparent'
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}>
+                  <TimelineIcon color={isPerimeterMode ? 'secondary' : 'inherit'} />
                 </ListItemIcon>
               </ListItemButton>
             </ListItem>

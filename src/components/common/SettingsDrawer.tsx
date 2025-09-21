@@ -52,6 +52,10 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
     toggleClearanceZones,
     showMeasurementLines,
     toggleMeasurementLines,
+    showPerimeter,
+    togglePerimeter,
+    perimeterColor,
+    setPerimeterColor,
     gridSpacing,
     setGridSpacing,
     gridColor,
@@ -272,6 +276,16 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
                 <FormControlLabel
                   control={
                     <Switch
+                      checked={showPerimeter}
+                      onChange={togglePerimeter}
+                    />
+                  }
+                  label="Show Perimeter"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Switch
                       checked={showCoordinates}
                       onChange={(e) => setShowCoordinates(e.target.checked)}
                     />
@@ -297,6 +311,56 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
                 }
                 label="Snap to Grid"
               />
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Perimeter Settings */}
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1">Perimeter Settings</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {/* Perimeter Color */}
+                <Box>
+                  <Typography gutterBottom>Perimeter Color</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type="color"
+                      value={perimeterColor}
+                      onChange={(e) => setPerimeterColor(e.target.value)}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      {perimeterColor.toUpperCase()}
+                    </Typography>
+                  </Box>
+
+                  {/* Preset colors */}
+                  <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                    {['#9c27b0', '#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#673ab7', '#e91e63'].map((color) => (
+                      <Paper
+                        key={color}
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          bgcolor: color,
+                          cursor: 'pointer',
+                          border: perimeterColor === color ? '2px solid #1976d2' : '1px solid rgba(255,255,255,0.12)',
+                          borderRadius: 1
+                        }}
+                        onClick={() => setPerimeterColor(color)}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Box>
             </AccordionDetails>
           </Accordion>
 
