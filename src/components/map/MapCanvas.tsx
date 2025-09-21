@@ -534,10 +534,10 @@ const MapCanvas: React.FC = () => {
         // Reset cursor when panning ends
         const canvas = canvasRef.current;
         if (canvas) {
-          if (isPanningMode) {
-            canvas.style.cursor = 'grab'; // Show grab cursor when in pan mode
-          } else if (isCalibrationMode || isRulerMode) {
+          if (isCalibrationMode || isRulerMode) {
             canvas.style.cursor = 'crosshair'; // Show crosshair for calibration/ruler mode
+          } else if (isPanningMode) {
+            canvas.style.cursor = 'grab'; // Show grab cursor when in pan mode
           } else {
             canvas.style.cursor = 'default'; // Reset to default when not in any special mode
           }
@@ -622,10 +622,10 @@ const MapCanvas: React.FC = () => {
       // Set appropriate cursor based on mode
       const canvas = canvasRef.current;
       if (canvas) {
-        if (isPanningMode) {
-          canvas.style.cursor = 'grab';
-        } else if (isCalibrationMode || isRulerMode) {
+        if (isCalibrationMode || isRulerMode) {
           canvas.style.cursor = 'crosshair';
+        } else if (isPanningMode) {
+          canvas.style.cursor = 'grab';
         } else {
           canvas.style.cursor = 'default';
         }
@@ -1411,6 +1411,20 @@ const MapCanvas: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawMeasurementLines, drawCurrentMeasurementLine, drawEquipmentItems, drawGrid, loadedImage, selectedMeasurementId, removeMeasurementLine]);
+
+  // Handle cursor changes when modes change
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      if (isCalibrationMode || isRulerMode) {
+        canvas.style.cursor = 'crosshair';
+      } else if (isPanningMode) {
+        canvas.style.cursor = 'grab';
+      } else {
+        canvas.style.cursor = 'default';
+      }
+    }
+  }, [isCalibrationMode, isRulerMode, isPanningMode]);
 
   return (
     <Box 
