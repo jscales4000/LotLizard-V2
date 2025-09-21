@@ -15,12 +15,11 @@ export interface Project {
     scale: number;
     position: { x: number; y: number };
     imageUrl: string | null;
-    pixelsPerMeter: number;
+    pixelsPerFoot: number;
     calibrationPoints: any[];
     activeCalibrationLine: any | null;
     showGrid: boolean;
     gridSpacing: number;
-    gridSpacingFeet: number;
     gridColor: string;
     gridOpacity: number;
     showCalibrationLine: boolean;
@@ -61,12 +60,11 @@ export class ProjectService {
         scale: 1.0,
         position: { x: 0, y: 0 },
         imageUrl: null,
-        pixelsPerMeter: 1,
+        pixelsPerFoot: 1,
         calibrationPoints: [],
         activeCalibrationLine: null,
         showGrid: true,
-        gridSpacing: 3.048,
-        gridSpacingFeet: 10,
+        gridSpacing: 10,
         gridColor: '#333333',
         gridOpacity: 0.3,
         showCalibrationLine: true,
@@ -109,12 +107,11 @@ export class ProjectService {
       scale: mapState.scale,
       position: mapState.position,
       imageUrl: mapState.imageUrl,
-      pixelsPerMeter: mapState.pixelsPerMeter,
+      pixelsPerFoot: mapState.pixelsPerFoot,
       calibrationPoints: mapState.calibrationPoints,
       activeCalibrationLine: mapState.activeCalibrationLine,
       showGrid: mapState.showGrid,
       gridSpacing: mapState.gridSpacing,
-      gridSpacingFeet: mapState.gridSpacingFeet,
       gridColor: mapState.gridColor,
       gridOpacity: mapState.gridOpacity,
       showCalibrationLine: mapState.showCalibrationLine,
@@ -155,7 +152,7 @@ export class ProjectService {
     mapStore.setScale(project.mapState.scale || 1.0);
     mapStore.setPosition(project.mapState.position || { x: 0, y: 0 });
     mapStore.setImageUrl(project.mapState.imageUrl);
-    mapStore.setPixelsPerMeter(project.mapState.pixelsPerMeter);
+    mapStore.setPixelsPerFoot(project.mapState.pixelsPerFoot || 1);
 
     // Clear and restore calibration
     mapStore.clearCalibration();
@@ -165,10 +162,10 @@ export class ProjectService {
       });
     }
     if (project.mapState.activeCalibrationLine) {
-      // Restore active calibration line and update pixels per meter
+      // Restore active calibration line and update pixels per foot
       useMapStore.setState({
         activeCalibrationLine: project.mapState.activeCalibrationLine,
-        pixelsPerMeter: project.mapState.activeCalibrationLine.pixelsPerMeter
+        pixelsPerFoot: project.mapState.activeCalibrationLine.pixelsPerFoot || 1
       });
     }
 
@@ -176,12 +173,7 @@ export class ProjectService {
     if (project.mapState.showGrid !== mapStore.showGrid) {
       mapStore.toggleGrid();
     }
-    mapStore.setGridSpacing(project.mapState.gridSpacing || 3.048);
-
-    // Handle new grid properties with backward compatibility
-    if (project.mapState.gridSpacingFeet !== undefined) {
-      mapStore.setGridSpacingFeet(project.mapState.gridSpacingFeet);
-    }
+    mapStore.setGridSpacing(project.mapState.gridSpacing || 10);
 
     if (project.mapState.gridColor) {
       mapStore.setGridColor(project.mapState.gridColor);

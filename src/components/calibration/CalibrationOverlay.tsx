@@ -116,10 +116,10 @@ const CalibrationOverlay: React.FC = () => {
           key={`point-${i}`}
           x={point.x}
           y={point.y}
-          radius={6}
+          radius={1.5}
           fill="#00ff00"
           stroke="#ffffff"
-          strokeWidth={1}
+          strokeWidth={0.25}
         />
       ))}
       
@@ -128,7 +128,7 @@ const CalibrationOverlay: React.FC = () => {
         <Circle
           x={tempPoint.x}
           y={tempPoint.y}
-          radius={6}
+          radius={1.5}
           fill="#00ff00"
           opacity={0.5}
         />

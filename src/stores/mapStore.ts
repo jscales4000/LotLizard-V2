@@ -12,12 +12,11 @@ interface MapState {
   calibrationPoints: CalibrationPoint[];
   activeCalibrationLine: CalibrationLine | null;
   currentCalibrationLine: { startPoint: CalibrationPoint | null; endPoint: CalibrationPoint | null } | null;
-  pixelsPerMeter: number;
-  
+  pixelsPerFoot: number;
+
   // Grid settings
   showGrid: boolean;
-  gridSpacing: number; // in feet (converted to meters internally)
-  gridSpacingFeet: number; // display value in feet
+  gridSpacing: number; // in feet
   gridColor: string;
   gridOpacity: number; // 0.0 to 1.0
   
@@ -33,20 +32,19 @@ interface MapState {
   setPosition: (position: { x: number; y: number }) => void;
   setImageUrl: (url: string | null) => void;
 
-  setPixelsPerMeter: (pixelsPerMeter: number) => void;
+  setPixelsPerFoot: (pixelsPerFoot: number) => void;
   toggleCalibrationMode: () => void;
   addCalibrationPoint: (point: CalibrationPoint) => void;
   clearCalibrationPoints: () => void;
   startCalibrationLine: (point: CalibrationPoint) => void;
   completeCalibrationLine: (endPoint: CalibrationPoint, realWorldDistance: number) => void;
   clearCalibration: () => void;
-  updatePixelsPerMeter: () => void;
+  updatePixelsPerFoot: () => void;
   
   // Grid actions
   toggleGrid: () => void;
   toggleCalibrationLine: () => void;
   setGridSpacing: (spacing: number) => void;
-  setGridSpacingFeet: (spacingFeet: number) => void;
   setGridColor: (color: string) => void;
   setGridOpacity: (opacity: number) => void;
   
@@ -75,12 +73,11 @@ export const useMapStore = create<MapState>((set, get) => ({
   calibrationPoints: [],
   activeCalibrationLine: null,
   currentCalibrationLine: null,
-  pixelsPerMeter: 1,
-  
+  pixelsPerFoot: 1,
+
   // Grid settings
   showGrid: true,
-  gridSpacing: 3.048, // 10 feet in meters (10 * 0.3048)
-  gridSpacingFeet: 10, // 10 feet display value
+  gridSpacing: 10, // 10 feet
   gridColor: '#333333',
   gridOpacity: 0.3,
   
@@ -96,7 +93,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   setPosition: (position) => set({ position }),
   setImageUrl: (imageUrl) => set({ imageUrl }),
 
-  setPixelsPerMeter: (pixelsPerMeter) => set({ pixelsPerMeter }),
+  setPixelsPerFoot: (pixelsPerFoot) => set({ pixelsPerFoot }),
   toggleCalibrationMode: () => set((state) => ({ 
     isCalibrationMode: !state.isCalibrationMode,
     currentCalibrationLine: null // Reset current line when toggling mode
@@ -127,7 +124,7 @@ export const useMapStore = create<MapState>((set, get) => ({
       set({
         activeCalibrationLine: calibrationLine,
         currentCalibrationLine: null,
-        pixelsPerMeter: calibrationLine.pixelsPerMeter
+        pixelsPerFoot: calibrationLine.pixelsPerFoot
       });
     } catch (error) {
       console.error('Failed to create calibration line:', error);
@@ -139,29 +136,22 @@ export const useMapStore = create<MapState>((set, get) => ({
     calibrationPoints: [],
     activeCalibrationLine: null,
     currentCalibrationLine: null,
-    pixelsPerMeter: 1
+    pixelsPerFoot: 1
   }),
   
-  updatePixelsPerMeter: () => {
+  updatePixelsPerFoot: () => {
     const state = get();
     if (state.activeCalibrationLine) {
-      set({ pixelsPerMeter: state.activeCalibrationLine.pixelsPerMeter });
+      set({ pixelsPerFoot: state.activeCalibrationLine.pixelsPerFoot });
     } else {
-      set({ pixelsPerMeter: 1 });
+      set({ pixelsPerFoot: 1 });
     }
   },
   
   // Grid actions
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
   toggleCalibrationLine: () => set((state) => ({ showCalibrationLine: !state.showCalibrationLine })),
-  setGridSpacing: (spacing) => set({
-    gridSpacing: spacing,
-    gridSpacingFeet: Math.round(spacing / 0.3048) // Convert meters to feet
-  }),
-  setGridSpacingFeet: (spacingFeet) => set({
-    gridSpacingFeet: spacingFeet,
-    gridSpacing: spacingFeet * 0.3048 // Convert feet to meters
-  }),
+  setGridSpacing: (spacing) => set({ gridSpacing: spacing }),
   setGridColor: (color) => set({ gridColor: color }),
   setGridOpacity: (opacity) => set({ gridOpacity: opacity }),
   

@@ -22,7 +22,7 @@ const MapCanvas: React.FC = () => {
     currentCalibrationLine,
     startCalibrationLine,
     completeCalibrationLine,
-    pixelsPerMeter,
+    pixelsPerFoot,
     setScale,
     showGrid,
     showCalibrationLine,
@@ -591,7 +591,7 @@ const MapCanvas: React.FC = () => {
         const x = (canvasX - position.x) / scale;
         const y = (canvasY - position.y) / scale;
         
-        addItemFromTemplate(data.templateId, x, y, pixelsPerMeter);
+        addItemFromTemplate(data.templateId, x, y, pixelsPerFoot);
       }
     } catch (error) {
       console.error('Failed to handle drop:', error);
@@ -606,18 +606,18 @@ const MapCanvas: React.FC = () => {
       id: `point-${Date.now()}`
     };
     
-    // Calculate the new pixelsPerMeter BEFORE updating equipment
+    // Calculate the new pixelsPerFoot BEFORE updating equipment
     const pixelDistance = CalibrationService.calculatePixelDistance(
-      currentCalibrationLine.startPoint, 
+      currentCalibrationLine.startPoint,
       endPointWithId
     );
-    const newPixelsPerMeter = pixelDistance / distance;
-    
+    const newPixelsPerFoot = pixelDistance / distance;
+
     // Complete the calibration line
     completeCalibrationLine(endPointWithId, distance);
-    
-    // Update equipment dimensions with the NEW pixelsPerMeter value
-    updateItemDimensions(newPixelsPerMeter);
+
+    // Update equipment dimensions with the NEW pixelsPerFoot value
+    updateItemDimensions(newPixelsPerFoot);
     
     setPendingCalibrationData(null);
     setCalibrationDialogOpen(false);
@@ -633,7 +633,7 @@ const MapCanvas: React.FC = () => {
     if (!activeCalibrationLine || !showCalibrationLine) return;
     
     ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 0.75;
     ctx.setLineDash([10, 5]);
     ctx.beginPath();
     ctx.moveTo(activeCalibrationLine.startPoint.x, activeCalibrationLine.startPoint.y);
@@ -642,11 +642,11 @@ const MapCanvas: React.FC = () => {
     
     ctx.fillStyle = '#00ff00';
     ctx.beginPath();
-    ctx.arc(activeCalibrationLine.startPoint.x, activeCalibrationLine.startPoint.y, 8, 0, 2 * Math.PI);
+    ctx.arc(activeCalibrationLine.startPoint.x, activeCalibrationLine.startPoint.y, 2, 0, 2 * Math.PI);
     ctx.fill();
-    
+
     ctx.beginPath();
-    ctx.arc(activeCalibrationLine.endPoint.x, activeCalibrationLine.endPoint.y, 8, 0, 2 * Math.PI);
+    ctx.arc(activeCalibrationLine.endPoint.x, activeCalibrationLine.endPoint.y, 2, 0, 2 * Math.PI);
     ctx.fill();
     
     const midX = (activeCalibrationLine.startPoint.x + activeCalibrationLine.endPoint.x) / 2;
@@ -667,7 +667,7 @@ const MapCanvas: React.FC = () => {
     
     ctx.fillStyle = '#ffff00';
     ctx.beginPath();
-    ctx.arc(currentCalibrationLine.startPoint.x, currentCalibrationLine.startPoint.y, 6, 0, 2 * Math.PI);
+    ctx.arc(currentCalibrationLine.startPoint.x, currentCalibrationLine.startPoint.y, 1.5, 0, 2 * Math.PI);
     ctx.fill();
     
     ctx.fillStyle = '#ffffff';
@@ -814,7 +814,7 @@ const MapCanvas: React.FC = () => {
   }, [equipmentItems, isSelected, showEquipmentLabels, showClearanceZones]);
 
   const drawGrid = React.useCallback((ctx: CanvasRenderingContext2D) => {
-    if (!showGrid || pixelsPerMeter <= 0) return;
+    if (!showGrid || pixelsPerFoot <= 0) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -824,7 +824,7 @@ const MapCanvas: React.FC = () => {
     ctx.lineWidth = 1;
     ctx.globalAlpha = gridOpacity;
     
-    const gridSpacingPixels = gridSpacing * pixelsPerMeter * scale;
+    const gridSpacingPixels = gridSpacing * pixelsPerFoot * scale;
 
     if (gridSpacingPixels < 5) {
       ctx.restore();
@@ -848,7 +848,7 @@ const MapCanvas: React.FC = () => {
     }
     
     ctx.restore();
-  }, [showGrid, pixelsPerMeter, scale, position, gridSpacing, gridColor, gridOpacity]);
+  }, [showGrid, pixelsPerFoot, scale, position, gridSpacing, gridColor, gridOpacity]);
 
   // Draw on canvas
   useEffect(() => {

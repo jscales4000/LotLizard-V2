@@ -13,7 +13,7 @@ export interface CalibrationLine {
   endPoint: CalibrationPoint;
   pixelDistance: number;
   realWorldDistance: number;
-  pixelsPerMeter: number;
+  pixelsPerFoot: number;
 }
 
 export class CalibrationService {
@@ -27,9 +27,9 @@ export class CalibrationService {
   }
 
   /**
-   * Calculate pixels per meter ratio from calibration line
+   * Calculate pixels per foot ratio from calibration line
    */
-  static calculatePixelsPerMeter(pixelDistance: number, realWorldDistance: number): number {
+  static calculatePixelsPerFoot(pixelDistance: number, realWorldDistance: number): number {
     if (realWorldDistance <= 0) {
       throw new Error('Real world distance must be greater than 0');
     }
@@ -45,7 +45,7 @@ export class CalibrationService {
     realWorldDistance: number
   ): CalibrationLine {
     const pixelDistance = this.calculatePixelDistance(startPoint, endPoint);
-    const pixelsPerMeter = this.calculatePixelsPerMeter(pixelDistance, realWorldDistance);
+    const pixelsPerFoot = this.calculatePixelsPerFoot(pixelDistance, realWorldDistance);
 
     return {
       id: `cal-${Date.now()}`,
@@ -53,22 +53,22 @@ export class CalibrationService {
       endPoint,
       pixelDistance,
       realWorldDistance,
-      pixelsPerMeter
+      pixelsPerFoot
     };
   }
 
   /**
    * Convert pixel measurements to real world measurements
    */
-  static pixelsToMeters(pixels: number, pixelsPerMeter: number): number {
-    return pixels / pixelsPerMeter;
+  static pixelsToFeet(pixels: number, pixelsPerFoot: number): number {
+    return pixels / pixelsPerFoot;
   }
 
   /**
    * Convert real world measurements to pixel measurements
    */
-  static metersToPixels(meters: number, pixelsPerMeter: number): number {
-    return meters * pixelsPerMeter;
+  static feetToPixels(feet: number, pixelsPerFoot: number): number {
+    return feet * pixelsPerFoot;
   }
 
   /**
@@ -79,13 +79,13 @@ export class CalibrationService {
       return 1;
     }
 
-    // Average the pixels per meter from all calibration lines
-    const totalPixelsPerMeter = calibrationLines.reduce(
-      (sum, line) => sum + line.pixelsPerMeter,
+    // Average the pixels per foot from all calibration lines
+    const totalPixelsPerFoot = calibrationLines.reduce(
+      (sum, line) => sum + line.pixelsPerFoot,
       0
     );
-    
-    return totalPixelsPerMeter / calibrationLines.length;
+
+    return totalPixelsPerFoot / calibrationLines.length;
   }
 
   /**
@@ -112,10 +112,10 @@ export class CalibrationService {
 
     // Check for inconsistent scales between multiple lines
     if (calibrationLines.length > 1) {
-      const pixelsPerMeterValues = calibrationLines.map(line => line.pixelsPerMeter);
-      const average = pixelsPerMeterValues.reduce((sum, val) => sum + val, 0) / pixelsPerMeterValues.length;
-      const maxDeviation = Math.max(...pixelsPerMeterValues.map(val => Math.abs(val - average)));
-      
+      const pixelsPerFootValues = calibrationLines.map(line => line.pixelsPerFoot);
+      const average = pixelsPerFootValues.reduce((sum, val) => sum + val, 0) / pixelsPerFootValues.length;
+      const maxDeviation = Math.max(...pixelsPerFootValues.map(val => Math.abs(val - average)));
+
       if (maxDeviation > average * 0.2) { // 20% deviation threshold
         warnings.push('Calibration lines have inconsistent scales. Consider recalibrating for better accuracy.');
       }
@@ -123,10 +123,10 @@ export class CalibrationService {
 
     // Check for unrealistic scales
     calibrationLines.forEach((line, index) => {
-      if (line.pixelsPerMeter < 0.1) {
+      if (line.pixelsPerFoot < 0.3) {
         warnings.push(`Calibration line ${index + 1} suggests a very large scale. Please verify the real-world distance.`);
       }
-      if (line.pixelsPerMeter > 100) {
+      if (line.pixelsPerFoot > 300) {
         warnings.push(`Calibration line ${index + 1} suggests a very small scale. Please verify the real-world distance.`);
       }
     });
@@ -141,29 +141,7 @@ export class CalibrationService {
   /**
    * Format distance for display
    */
-  static formatDistance(meters: number, unit: 'meters' | 'feet' = 'meters'): string {
-    if (unit === 'feet') {
-      const feet = meters * 3.28084;
-      return feet < 10 ? `${feet.toFixed(1)} ft` : `${Math.round(feet)} ft`;
-    }
-    
-    return meters < 10 ? `${meters.toFixed(1)} m` : `${Math.round(meters)} m`;
-  }
-
-  /**
-   * Convert between units
-   */
-  static convertUnits(value: number, fromUnit: 'meters' | 'feet', toUnit: 'meters' | 'feet'): number {
-    if (fromUnit === toUnit) return value;
-    
-    if (fromUnit === 'meters' && toUnit === 'feet') {
-      return value * 3.28084;
-    }
-    
-    if (fromUnit === 'feet' && toUnit === 'meters') {
-      return value / 3.28084;
-    }
-    
-    return value;
+  static formatDistance(feet: number): string {
+    return feet < 10 ? `${feet.toFixed(1)} ft` : `${Math.round(feet)} ft`;
   }
 }

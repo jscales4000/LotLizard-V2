@@ -18,7 +18,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Grid,
   Paper,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -35,7 +34,6 @@ interface SettingsDrawerProps {
 }
 
 const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
-  const [units, setUnits] = useState('feet');
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [showCoordinates, setShowCoordinates] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
@@ -52,8 +50,8 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
     toggleEquipmentLabels,
     showClearanceZones,
     toggleClearanceZones,
-    gridSpacingFeet,
-    setGridSpacingFeet,
+    gridSpacing,
+    setGridSpacing,
     gridColor,
     setGridColor,
     gridOpacity,
@@ -149,10 +147,10 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
 
                     {/* Grid Size */}
                     <Box sx={{ mb: 2 }}>
-                      <Typography gutterBottom>Grid Spacing: {gridSpacingFeet}ft</Typography>
+                      <Typography gutterBottom>Grid Spacing: {gridSpacing}ft</Typography>
                       <Slider
-                        value={gridSpacingFeet}
-                        onChange={(e, newValue) => setGridSpacingFeet(newValue as number)}
+                        value={gridSpacing}
+                        onChange={(e, newValue) => setGridSpacing(newValue as number)}
                         min={5}
                         max={50}
                         step={5}
@@ -272,36 +270,21 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
             </AccordionDetails>
           </Accordion>
 
-          {/* Units & Measurements */}
+          {/* Snap to Grid */}
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle1">Units & Measurements</Typography>
+              <Typography variant="subtitle1">Grid Behavior</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Units</InputLabel>
-                  <Select
-                    value={units}
-                    label="Units"
-                    onChange={(e) => setUnits(e.target.value)}
-                  >
-                    <MenuItem value="feet">Feet</MenuItem>
-                    <MenuItem value="meters">Meters</MenuItem>
-                    <MenuItem value="yards">Yards</MenuItem>
-                  </Select>
-                </FormControl>
-
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={snapToGrid}
-                      onChange={(e) => setSnapToGrid(e.target.checked)}
-                    />
-                  }
-                  label="Snap to Grid"
-                />
-              </Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={snapToGrid}
+                    onChange={(e) => setSnapToGrid(e.target.checked)}
+                  />
+                }
+                label="Snap to Grid"
+              />
             </AccordionDetails>
           </Accordion>
 

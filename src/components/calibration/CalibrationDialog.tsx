@@ -8,10 +8,6 @@ import {
   TextField,
   Box,
   Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Alert,
   IconButton
 } from '@mui/material';
@@ -22,7 +18,7 @@ import { CalibrationService } from '../../services/calibrationService';
 interface CalibrationDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (distance: number, unit: 'meters' | 'feet') => void;
+  onConfirm: (distance: number) => void;
   pixelDistance?: number;
 }
 
@@ -33,7 +29,6 @@ const CalibrationDialog: React.FC<CalibrationDialogProps> = ({
   pixelDistance = 0
 }) => {
   const [distance, setDistance] = useState<string>('');
-  const [unit, setUnit] = useState<'meters' | 'feet'>('meters');
   const [error, setError] = useState<string>('');
 
   const handleConfirm = () => {
@@ -44,12 +39,8 @@ const CalibrationDialog: React.FC<CalibrationDialogProps> = ({
       return;
     }
 
-    // Convert to feet if needed (swap fixed)
-    const distanceInFeet = unit === 'meters' 
-      ? CalibrationService.convertUnits(numDistance, 'meters', 'feet')
-      : numDistance;
-
-    onConfirm(distanceInFeet, unit);
+    // Distance is already in feet
+    onConfirm(numDistance);
     handleClose();
   };
 
@@ -89,35 +80,22 @@ const CalibrationDialog: React.FC<CalibrationDialogProps> = ({
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <TextField
-            label="Distance"
-            value={distance}
-            onChange={handleDistanceChange}
-            type="number"
-            inputProps={{ 
-              min: 0, 
-              step: 0.1,
-              placeholder: "e.g. 10"
-            }}
-            fullWidth
-            autoFocus
-            error={!!error}
-            helperText={error}
-          />
-          
-          <FormControl sx={{ minWidth: 120 }}>
-            <InputLabel>Unit</InputLabel>
-            <Select
-              value={unit}
-              label="Unit"
-              onChange={(e) => setUnit(e.target.value as 'meters' | 'feet')}
-            >
-              <MenuItem value="meters">Meters</MenuItem>
-              <MenuItem value="feet">Feet</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
+        <TextField
+          label="Distance (feet)"
+          value={distance}
+          onChange={handleDistanceChange}
+          type="number"
+          inputProps={{
+            min: 0,
+            step: 0.1,
+            placeholder: "e.g. 10"
+          }}
+          fullWidth
+          autoFocus
+          error={!!error}
+          helperText={error}
+          sx={{ mb: 2 }}
+        />
 
         <Alert severity="info" sx={{ mb: 2 }}>
           <Typography variant="body2">
@@ -137,10 +115,10 @@ const CalibrationDialog: React.FC<CalibrationDialogProps> = ({
               <strong>Preview:</strong>
             </Typography>
             <Typography variant="body2">
-              {pixelDistance} pixels = {distance} {unit}
+              {pixelDistance} pixels = {distance} feet
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Scale: {(pixelDistance / parseFloat(distance || '1')).toFixed(2)} pixels per {unit === 'meters' ? 'meter' : 'foot'}
+              Scale: {(pixelDistance / parseFloat(distance || '1')).toFixed(2)} pixels per foot
             </Typography>
           </Box>
         )}

@@ -104,7 +104,7 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
   const [isSearching, setIsSearching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { setImageUrl, setPixelsPerMeter } = useMapStore();
+  const { setImageUrl, setPixelsPerFoot } = useMapStore();
   
   // Initialize Google Maps API with the API key
   useEffect(() => {
@@ -197,7 +197,7 @@ const ImageImportDrawer: React.FC<ImageImportDrawerProps> = ({ open, onClose }) 
         reader.onloadend = () => {
           const dataUrl = reader.result as string;
           setImageUrl(dataUrl);
-          setPixelsPerMeter(pixelsPerMeter);
+          setPixelsPerFoot(pixelsPerMeter);
           handleClose();
         };
         reader.readAsDataURL(blob);
