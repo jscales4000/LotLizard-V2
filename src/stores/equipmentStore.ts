@@ -4,11 +4,7 @@ import {
   useUndoRedoStore,
   createEquipmentAddAction,
   createEquipmentRemoveAction,
-  createEquipmentMoveAction,
-  createEquipmentBulkMoveAction,
-  createEquipmentRotateAction,
-  createEquipmentResizeAction,
-  createEquipmentUpdateAction
+  createEquipmentBulkMoveAction
 } from './undoRedoStore';
 
 // Define equipment item structure

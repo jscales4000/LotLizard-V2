@@ -51,7 +51,6 @@ const MapCanvas: React.FC = () => {
     showPerimeter,
     perimeterColor,
     addPerimeterPoint,
-    clearCurrentPerimeter,
     closePerimeter
   } = useMapStore();
   
@@ -1541,7 +1540,7 @@ const MapCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawMeasurementLines, drawCurrentMeasurementLine, drawPerimeter, drawCurrentPerimeter, drawEquipmentItems, drawGrid, loadedImage, selectedMeasurementId, removeMeasurementLine]);
+  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawMeasurementLines, drawCurrentMeasurementLine, drawPerimeter, drawCurrentPerimeter, drawEquipmentItems, drawGrid, loadedImage, selectedMeasurementId, removeMeasurementLine, undoLastAction, redoLastAction]);
 
   return (
     <Box 
