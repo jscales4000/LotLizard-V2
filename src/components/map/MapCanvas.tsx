@@ -536,8 +536,10 @@ const MapCanvas: React.FC = () => {
         if (canvas) {
           if (isPanningMode) {
             canvas.style.cursor = 'grab'; // Show grab cursor when in pan mode
+          } else if (isCalibrationMode || isRulerMode) {
+            canvas.style.cursor = 'crosshair'; // Show crosshair for calibration/ruler mode
           } else {
-            canvas.style.cursor = 'default'; // Reset to default when not in pan mode
+            canvas.style.cursor = 'default'; // Reset to default when not in any special mode
           }
         }
       }
@@ -622,6 +624,8 @@ const MapCanvas: React.FC = () => {
       if (canvas) {
         if (isPanningMode) {
           canvas.style.cursor = 'grab';
+        } else if (isCalibrationMode || isRulerMode) {
+          canvas.style.cursor = 'crosshair';
         } else {
           canvas.style.cursor = 'default';
         }
