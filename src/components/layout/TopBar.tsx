@@ -1,13 +1,19 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, IconButton, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, IconButton, Box, Tooltip } from '@mui/material';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import StraightenIcon from '@mui/icons-material/Straighten';
+import UndoIcon from '@mui/icons-material/Undo';
+import RedoIcon from '@mui/icons-material/Redo';
 import { useMapStore } from '../../stores/mapStore';
+import { useEquipmentStore } from '../../stores/equipmentStore';
+import { useUndoRedoStore } from '../../stores/undoRedoStore';
 import lizardLogo from '../../assets/lizard-logo.png';
 
 const TopBar: React.FC = () => {
   const { scale, setScale, isRulerMode, toggleRulerMode } = useMapStore();
+  const { undoLastAction, redoLastAction } = useEquipmentStore();
+  const { canUndo, canRedo, getUndoDescription, getRedoDescription } = useUndoRedoStore();
 
   const handleZoomIn = () => {
     setScale(scale * 1.2);
@@ -39,6 +45,33 @@ const TopBar: React.FC = () => {
         <Box sx={{ flexGrow: 1 }} />
         
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {/* Undo/Redo Controls */}
+          <Tooltip title={canUndo() ? `Undo: ${getUndoDescription()}` : 'Nothing to undo'}>
+            <span>
+              <IconButton
+                onClick={undoLastAction}
+                size="small"
+                disabled={!canUndo()}
+                sx={{ mr: 1 }}
+              >
+                <UndoIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title={canRedo() ? `Redo: ${getRedoDescription()}` : 'Nothing to redo'}>
+            <span>
+              <IconButton
+                onClick={redoLastAction}
+                size="small"
+                disabled={!canRedo()}
+                sx={{ mr: 2 }}
+              >
+                <RedoIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
           <IconButton
             onClick={toggleRulerMode}
             size="small"

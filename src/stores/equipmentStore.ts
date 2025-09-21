@@ -1,5 +1,15 @@
 import { create } from 'zustand';
 import { EquipmentService, EquipmentTemplate, EquipmentCategory } from '../services/equipmentService';
+import {
+  useUndoRedoStore,
+  createEquipmentAddAction,
+  createEquipmentRemoveAction,
+  createEquipmentMoveAction,
+  createEquipmentBulkMoveAction,
+  createEquipmentRotateAction,
+  createEquipmentResizeAction,
+  createEquipmentUpdateAction
+} from './undoRedoStore';
 
 // Define equipment item structure
 export interface EquipmentItem {
@@ -67,7 +77,11 @@ interface EquipmentState {
   copySelectedItems: () => void;
   pasteItems: (x?: number, y?: number) => void;
   clearAll: () => void;
-  
+
+  // Undo/Redo actions
+  undoLastAction: () => void;
+  redoLastAction: () => void;
+
   // Helpers
   getSelectedItems: () => EquipmentItem[];
   isSelected: (id: string) => boolean;
@@ -151,7 +165,11 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     set((state) => ({
       items: [...state.items, newItem]
     }));
-    
+
+    // Record action for undo/redo
+    const { addAction } = useUndoRedoStore.getState();
+    addAction(createEquipmentAddAction(newItem));
+
     return newItem.id;
   },
   updateItem: (id, updates) => set((state) => ({
@@ -203,10 +221,21 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     selectedIds: state.selectedIds.filter(selectedId => selectedId !== id)
   })),
   
-  removeSelectedItems: () => set((state) => ({
-    items: state.items.filter(item => !state.selectedIds.includes(item.id)),
-    selectedIds: []
-  })),
+  removeSelectedItems: () => {
+    const state = get();
+    const itemsToRemove = state.items.filter(item => state.selectedIds.includes(item.id));
+
+    if (itemsToRemove.length === 0) return;
+
+    // Record action for undo/redo
+    const { addAction } = useUndoRedoStore.getState();
+    addAction(createEquipmentRemoveAction(itemsToRemove, state.selectedIds));
+
+    set((state) => ({
+      items: state.items.filter(item => !state.selectedIds.includes(item.id)),
+      selectedIds: []
+    }));
+  },
   
   selectItem: (id) => set({ selectedIds: id ? [id] : [] }),
   
@@ -237,13 +266,34 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     )
   })),
   
-  moveSelectedItems: (deltaX, deltaY) => set((state) => ({
-    items: state.items.map(item => 
-      state.selectedIds.includes(item.id) 
-        ? { ...item, x: item.x + deltaX, y: item.y + deltaY } 
-        : item
-    )
-  })),
+  moveSelectedItems: (deltaX, deltaY) => {
+    const state = get();
+    const selectedItems = state.items.filter(item => state.selectedIds.includes(item.id));
+
+    if (selectedItems.length === 0) return;
+
+    // Prepare data for undo/redo
+    const moveData = selectedItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      previousX: item.x,
+      previousY: item.y,
+      newX: item.x + deltaX,
+      newY: item.y + deltaY
+    }));
+
+    // Record action for undo/redo
+    const { addAction } = useUndoRedoStore.getState();
+    addAction(createEquipmentBulkMoveAction(moveData));
+
+    set((state) => ({
+      items: state.items.map(item =>
+        state.selectedIds.includes(item.id)
+          ? { ...item, x: item.x + deltaX, y: item.y + deltaY }
+          : item
+      )
+    }));
+  },
   rotateItem: (id, rotation) => set((state) => ({
     items: state.items.map(item =>
       item.id === id ? { ...item, rotation } : item
@@ -354,5 +404,169 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   
   isSelected: (id) => {
     return get().selectedIds.includes(id);
+  },
+
+  // Undo/Redo implementation
+  undoLastAction: () => {
+    const { undo, setUndoing } = useUndoRedoStore.getState();
+    const actionToUndo = undo();
+
+    if (!actionToUndo) return;
+
+    switch (actionToUndo.type) {
+      case 'EQUIPMENT_ADD':
+        // Undo add: remove the item
+        set((state) => ({
+          items: state.items.filter(item => item.id !== actionToUndo.undoData.itemId),
+          selectedIds: state.selectedIds.filter(id => id !== actionToUndo.undoData.itemId)
+        }));
+        break;
+
+      case 'EQUIPMENT_REMOVE':
+        // Undo remove: restore the items
+        set((state) => ({
+          items: [...state.items, ...actionToUndo.undoData.items],
+          selectedIds: actionToUndo.undoData.selectedIds
+        }));
+        break;
+
+      case 'EQUIPMENT_MOVE':
+        // Undo move: restore previous positions
+        if (actionToUndo.undoData.items) {
+          // Bulk move
+          set((state) => ({
+            items: state.items.map(item => {
+              const undoItem = actionToUndo.undoData.items.find((u: any) => u.id === item.id);
+              return undoItem ? { ...item, x: undoItem.x, y: undoItem.y } : item;
+            })
+          }));
+        } else {
+          // Single move
+          set((state) => ({
+            items: state.items.map(item =>
+              item.id === actionToUndo.undoData.itemId
+                ? { ...item, x: actionToUndo.undoData.previousX, y: actionToUndo.undoData.previousY }
+                : item
+            )
+          }));
+        }
+        break;
+
+      case 'EQUIPMENT_ROTATE':
+        // Undo rotate: restore previous rotation
+        set((state) => ({
+          items: state.items.map(item =>
+            item.id === actionToUndo.undoData.itemId
+              ? { ...item, rotation: actionToUndo.undoData.previousRotation }
+              : item
+          )
+        }));
+        break;
+
+      case 'EQUIPMENT_RESIZE':
+        // Undo resize: restore previous dimensions
+        set((state) => ({
+          items: state.items.map(item =>
+            item.id === actionToUndo.undoData.itemId
+              ? { ...item, width: actionToUndo.undoData.previousWidth, height: actionToUndo.undoData.previousHeight }
+              : item
+          )
+        }));
+        break;
+
+      case 'EQUIPMENT_UPDATE':
+        // Undo update: restore previous data
+        set((state) => ({
+          items: state.items.map(item =>
+            item.id === actionToUndo.undoData.itemId
+              ? { ...item, ...actionToUndo.undoData.previousData }
+              : item
+          )
+        }));
+        break;
+    }
+
+    setUndoing(false);
+  },
+
+  redoLastAction: () => {
+    const { redo, setRedoing } = useUndoRedoStore.getState();
+    const actionToRedo = redo();
+
+    if (!actionToRedo) return;
+
+    switch (actionToRedo.type) {
+      case 'EQUIPMENT_ADD':
+        // Redo add: add the item back
+        set((state) => ({
+          items: [...state.items, actionToRedo.redoData.item]
+        }));
+        break;
+
+      case 'EQUIPMENT_REMOVE':
+        // Redo remove: remove the items again
+        set((state) => ({
+          items: state.items.filter(item => !actionToRedo.redoData.itemIds.includes(item.id)),
+          selectedIds: []
+        }));
+        break;
+
+      case 'EQUIPMENT_MOVE':
+        // Redo move: apply new positions
+        if (actionToRedo.redoData.items) {
+          // Bulk move
+          set((state) => ({
+            items: state.items.map(item => {
+              const redoItem = actionToRedo.redoData.items.find((r: any) => r.id === item.id);
+              return redoItem ? { ...item, x: redoItem.x, y: redoItem.y } : item;
+            })
+          }));
+        } else {
+          // Single move
+          set((state) => ({
+            items: state.items.map(item =>
+              item.id === actionToRedo.redoData.itemId
+                ? { ...item, x: actionToRedo.redoData.newX, y: actionToRedo.redoData.newY }
+                : item
+            )
+          }));
+        }
+        break;
+
+      case 'EQUIPMENT_ROTATE':
+        // Redo rotate: apply new rotation
+        set((state) => ({
+          items: state.items.map(item =>
+            item.id === actionToRedo.redoData.itemId
+              ? { ...item, rotation: actionToRedo.redoData.newRotation }
+              : item
+          )
+        }));
+        break;
+
+      case 'EQUIPMENT_RESIZE':
+        // Redo resize: apply new dimensions
+        set((state) => ({
+          items: state.items.map(item =>
+            item.id === actionToRedo.redoData.itemId
+              ? { ...item, width: actionToRedo.redoData.newWidth, height: actionToRedo.redoData.newHeight }
+              : item
+          )
+        }));
+        break;
+
+      case 'EQUIPMENT_UPDATE':
+        // Redo update: apply new data
+        set((state) => ({
+          items: state.items.map(item =>
+            item.id === actionToRedo.redoData.itemId
+              ? { ...item, ...actionToRedo.redoData.newData }
+              : item
+          )
+        }));
+        break;
+    }
+
+    setRedoing(false);
   }
 }));

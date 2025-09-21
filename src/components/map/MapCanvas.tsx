@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Box, Typography } from '@mui/material';
-import { useMapStore, MeasurementLine } from '../../stores/mapStore';
+import { Box, Typography, Button } from '@mui/material';
+import { useMapStore, MeasurementLine, PerimeterPoint } from '../../stores/mapStore';
 import { useEquipmentStore } from '../../stores/equipmentStore';
 import { CalibrationService } from '../../services/calibrationService';
 import CalibrationDialog from '../calibration/CalibrationDialog';
@@ -19,6 +19,7 @@ const MapCanvas: React.FC = () => {
     isCalibrationMode,
     isPanningMode,
     isRulerMode,
+    isPerimeterMode,
     activeCalibrationLine,
     currentCalibrationLine,
     startCalibrationLine,
@@ -44,7 +45,14 @@ const MapCanvas: React.FC = () => {
     dragTarget,
     startDragging,
     updateDragging,
-    stopDragging
+    stopDragging,
+    currentPerimeter,
+    activePerimeter,
+    showPerimeter,
+    perimeterColor,
+    addPerimeterPoint,
+    clearCurrentPerimeter,
+    closePerimeter
   } = useMapStore();
   
   const { 
@@ -55,14 +63,16 @@ const MapCanvas: React.FC = () => {
     selectAll,
     deselectAll,
     moveItem,
-    moveSelectedItems, 
+    moveSelectedItems,
     removeSelectedItems,
     updateItemDimensions,
     copySelectedItems,
     pasteItems,
     isSelected,
     getSelectedItems,
-    rotateItem
+    rotateItem,
+    undoLastAction,
+    redoLastAction
   } = useEquipmentStore();
 
   // Local state
@@ -350,6 +360,8 @@ const MapCanvas: React.FC = () => {
                   drawCurrentCalibrationLine(ctx);
                   drawMeasurementLines(ctx);
                   drawCurrentMeasurementLine(ctx);
+                  drawPerimeter(ctx);
+                  drawCurrentPerimeter(ctx);
                   drawEquipmentItems(ctx);
                   
                   ctx.restore();
@@ -383,6 +395,8 @@ const MapCanvas: React.FC = () => {
                   drawCurrentCalibrationLine(ctx);
                   drawMeasurementLines(ctx);
                   drawCurrentMeasurementLine(ctx);
+                  drawPerimeter(ctx);
+                  drawCurrentPerimeter(ctx);
                   drawEquipmentItems(ctx);
                   
                   ctx.restore();
@@ -489,6 +503,30 @@ const MapCanvas: React.FC = () => {
           selectMeasurementLine(measurementPoint.line.id);
         }
         return;
+      }
+
+      // Handle perimeter mode - add points to perimeter
+      if (isPerimeterMode) {
+        // Limit to 33 points as specified
+        if (currentPerimeter.length < 33) {
+          const perimeterPoint: PerimeterPoint = {
+            id: `perimeter-point-${Date.now()}`,
+            x,
+            y,
+            order: currentPerimeter.length
+          };
+          addPerimeterPoint(perimeterPoint);
+        }
+        return;
+      }
+
+      // Check if clicked on measurement line for selection (but not in ruler mode)
+      if (!isRulerMode) {
+        const measurementLine = getMeasurementLineAtPoint(x, y);
+        if (measurementLine) {
+          selectMeasurementLine(measurementLine.id);
+          return;
+        }
       }
 
       // If clicked empty space, deselect all
@@ -905,6 +943,103 @@ const MapCanvas: React.FC = () => {
     );
   }, [currentMeasurementLine]);
 
+  // Perimeter drawing functions
+  const drawPerimeter = React.useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!showPerimeter) return;
+    console.log('Drawing perimeter, activePerimeter:', activePerimeter);
+
+    // Draw active perimeter (closed)
+    if (activePerimeter && activePerimeter.points.length > 2) {
+      ctx.strokeStyle = perimeterColor;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+
+      // Start from the first point
+      const firstPoint = activePerimeter.points[0];
+      ctx.moveTo(firstPoint.x, firstPoint.y);
+
+      // Draw lines to all other points
+      for (let i = 1; i < activePerimeter.points.length; i++) {
+        const point = activePerimeter.points[i];
+        ctx.lineTo(point.x, point.y);
+      }
+
+      // Close the perimeter by connecting back to the first point
+      ctx.closePath();
+      ctx.stroke();
+
+      // Draw perimeter points
+      activePerimeter.points.forEach(point => {
+        ctx.fillStyle = perimeterColor;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
+  }, [activePerimeter, showPerimeter, perimeterColor]);
+
+  const drawCurrentPerimeter = React.useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!isPerimeterMode || currentPerimeter.length === 0) return;
+
+    // Draw lines connecting current perimeter points
+    if (currentPerimeter.length > 1) {
+      ctx.strokeStyle = perimeterColor;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]); // Dashed line for current perimeter
+      ctx.beginPath();
+
+      const firstPoint = currentPerimeter[0];
+      ctx.moveTo(firstPoint.x, firstPoint.y);
+
+      for (let i = 1; i < currentPerimeter.length; i++) {
+        const point = currentPerimeter[i];
+        ctx.lineTo(point.x, point.y);
+      }
+
+      ctx.stroke();
+    }
+
+    // Draw current perimeter points
+    currentPerimeter.forEach((point, index) => {
+      ctx.fillStyle = perimeterColor;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Draw point numbers
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        (index + 1).toString(),
+        point.x,
+        point.y + 3
+      );
+    });
+
+    // Show point count and completion hint
+    if (currentPerimeter.length >= 3) {
+      ctx.fillStyle = perimeterColor;
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(
+        `Perimeter: ${currentPerimeter.length}/33 points - Click "Done" to close`,
+        10,
+        30
+      );
+    } else {
+      ctx.fillStyle = '#9c27b0';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(
+        `Perimeter: ${currentPerimeter.length}/33 points - Need at least 3 points`,
+        10,
+        30
+      );
+    }
+  }, [isPerimeterMode, currentPerimeter, perimeterColor]);
+
   // For hover popup functionality
   const [hoverItem, setHoverItem] = useState<string | null>(null);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -1096,6 +1231,8 @@ const MapCanvas: React.FC = () => {
     drawCurrentCalibrationLine(ctx);
     drawMeasurementLines(ctx);
     drawCurrentMeasurementLine(ctx);
+    drawPerimeter(ctx);
+    drawCurrentPerimeter(ctx);
     drawEquipmentItems(ctx);
     
     ctx.restore();
@@ -1225,21 +1362,15 @@ const MapCanvas: React.FC = () => {
       // Ctrl+Z for undo
       if (event.key.toLowerCase() === 'z' && event.ctrlKey && !event.shiftKey) {
         event.preventDefault();
-        // TODO: Implement undo functionality using store
-        console.log('Undo action');
-        // This will require adding undo/redo functionality to the store
-        // For MVP, we can show a notification that this will be available soon
+        undoLastAction();
         return;
       }
-      
+
       // Ctrl+Y or Ctrl+Shift+Z for redo
-      if ((event.key.toLowerCase() === 'y' && event.ctrlKey) || 
+      if ((event.key.toLowerCase() === 'y' && event.ctrlKey) ||
           (event.key.toLowerCase() === 'z' && event.ctrlKey && event.shiftKey)) {
         event.preventDefault();
-        // TODO: Implement redo functionality using store
-        console.log('Redo action');
-        // This will require adding undo/redo functionality to the store
-        // For MVP, we can show a notification that this will be available soon
+        redoLastAction();
         return;
       }
       
@@ -1410,7 +1541,7 @@ const MapCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawMeasurementLines, drawCurrentMeasurementLine, drawEquipmentItems, drawGrid, loadedImage, selectedMeasurementId, removeMeasurementLine]);
+  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawMeasurementLines, drawCurrentMeasurementLine, drawPerimeter, drawCurrentPerimeter, drawEquipmentItems, drawGrid, loadedImage, selectedMeasurementId, removeMeasurementLine]);
 
   return (
     <Box 
@@ -1550,6 +1681,37 @@ const MapCanvas: React.FC = () => {
           }}
         >
           📐 Ruler Mode: {currentMeasurementLine?.startPoint ? 'Click to set end point' : 'Click to set start point'}
+        </Box>
+      )}
+
+      {/* Perimeter Done Button */}
+      {isPerimeterMode && currentPerimeter.length >= 3 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            zIndex: 1000
+          }}
+        >
+          <Button
+            variant="contained"
+            color="secondary"
+            size="large"
+            onClick={() => {
+              closePerimeter();
+            }}
+            sx={{
+              background: 'linear-gradient(135deg, #9c27b0 0%, #673ab7 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #8e24aa 0%, #5e35b1 100%)',
+              },
+              fontWeight: 'bold',
+              boxShadow: 3
+            }}
+          >
+            Done - Close Perimeter ({currentPerimeter.length} points)
+          </Button>
         </Box>
       )}
 

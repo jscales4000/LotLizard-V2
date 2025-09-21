@@ -16,6 +16,20 @@ export interface MeasurementLine {
   realWorldDistance: number; // in feet
 }
 
+// Define perimeter point interface
+export interface PerimeterPoint {
+  id: string;
+  x: number;
+  y: number;
+  order: number; // Order in the perimeter sequence
+}
+
+export interface Perimeter {
+  id: string;
+  points: PerimeterPoint[];
+  closed: boolean;
+}
+
 // Define the state structure
 interface MapState {
   scale: number;
@@ -25,6 +39,7 @@ interface MapState {
   isCalibrationMode: boolean;
   isPanningMode: boolean; // Added state for pan/move tool mode
   isRulerMode: boolean; // Added state for ruler/measurement tool mode
+  isPerimeterMode: boolean; // Added state for perimeter drawing tool mode
   calibrationPoints: CalibrationPoint[];
   activeCalibrationLine: CalibrationLine | null;
   currentCalibrationLine: { startPoint: CalibrationPoint | null; endPoint: CalibrationPoint | null } | null;
@@ -39,6 +54,12 @@ interface MapState {
   // Drag state for moving measurement points
   isDragging: boolean;
   dragTarget: { lineId: string; pointType: 'start' | 'end' } | null;
+
+  // Perimeter settings
+  currentPerimeter: PerimeterPoint[];
+  activePerimeter: Perimeter | null;
+  showPerimeter: boolean;
+  perimeterColor: string;
 
   // Grid settings
   showGrid: boolean;
@@ -91,6 +112,14 @@ interface MapState {
   selectMeasurementLine: (id: string | null) => void;
   updateMeasurementLine: (id: string, updates: Partial<MeasurementLine>) => void;
 
+  // Perimeter actions
+  togglePerimeterMode: () => void;
+  addPerimeterPoint: (point: PerimeterPoint) => void;
+  clearCurrentPerimeter: () => void;
+  closePerimeter: () => void;
+  togglePerimeter: () => void;
+  setPerimeterColor: (color: string) => void;
+
   // Drag actions for moving measurement points
   startDragging: (lineId: string, pointType: 'start' | 'end') => void;
   updateDragging: (x: number, y: number) => void;
@@ -112,6 +141,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   isCalibrationMode: false,
   isPanningMode: false,
   isRulerMode: false,
+  isPerimeterMode: false,
   calibrationPoints: [],
   activeCalibrationLine: null,
   currentCalibrationLine: null,
@@ -126,6 +156,12 @@ export const useMapStore = create<MapState>((set, get) => ({
   // Drag state
   isDragging: false,
   dragTarget: null,
+
+  // Perimeter settings
+  currentPerimeter: [],
+  activePerimeter: null,
+  showPerimeter: true,
+  perimeterColor: '#9c27b0',
 
   // Grid settings
   showGrid: true,
@@ -313,6 +349,45 @@ export const useMapStore = create<MapState>((set, get) => ({
     isDragging: false,
     dragTarget: null
   }),
+
+  // Perimeter actions
+  togglePerimeterMode: () => set((state) => ({
+    isPerimeterMode: !state.isPerimeterMode,
+    currentPerimeter: !state.isPerimeterMode ? [] : state.currentPerimeter // Clear when entering mode
+  })),
+
+  addPerimeterPoint: (point) => set((state) => {
+    // Limit to 33 points as specified
+    if (state.currentPerimeter.length >= 33) return state;
+
+    return {
+      currentPerimeter: [...state.currentPerimeter, point]
+    };
+  }),
+
+  clearCurrentPerimeter: () => set({
+    currentPerimeter: []
+  }),
+
+  closePerimeter: () => {
+    const state = get();
+    if (state.currentPerimeter.length < 3) return; // Need at least 3 points for a perimeter
+
+    const perimeter: Perimeter = {
+      id: `perimeter-${Date.now()}`,
+      points: state.currentPerimeter,
+      closed: true
+    };
+
+    set({
+      activePerimeter: perimeter,
+      currentPerimeter: [],
+      isPerimeterMode: false
+    });
+  },
+
+  togglePerimeter: () => set((state) => ({ showPerimeter: !state.showPerimeter })),
+  setPerimeterColor: (color) => set({ perimeterColor: color }),
 
   // Zoom actions
   zoomIn: () => set((state) => ({ scale: Math.min(5, state.scale * 1.2) })),
