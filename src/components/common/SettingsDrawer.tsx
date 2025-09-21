@@ -50,6 +50,8 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
     toggleEquipmentLabels,
     showClearanceZones,
     toggleClearanceZones,
+    showMeasurementLines,
+    toggleMeasurementLines,
     gridSpacing,
     setGridSpacing,
     gridColor,
@@ -235,6 +237,16 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ open, onClose }) => {
                     />
                   }
                   label="Show Calibration Line"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showMeasurementLines}
+                      onChange={toggleMeasurementLines}
+                    />
+                  }
+                  label="Show Measurement Lines"
                 />
 
                 <FormControlLabel

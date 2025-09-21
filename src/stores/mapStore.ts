@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { CalibrationPoint, CalibrationLine, CalibrationService } from '../services/calibrationService';
 
+// Define measurement line interface
+export interface MeasurementPoint {
+  id: string;
+  x: number;
+  y: number;
+}
+
+export interface MeasurementLine {
+  id: string;
+  startPoint: MeasurementPoint;
+  endPoint: MeasurementPoint;
+  pixelDistance: number;
+  realWorldDistance: number; // in feet
+}
+
 // Define the state structure
 interface MapState {
   scale: number;
@@ -9,10 +24,21 @@ interface MapState {
 
   isCalibrationMode: boolean;
   isPanningMode: boolean; // Added state for pan/move tool mode
+  isRulerMode: boolean; // Added state for ruler/measurement tool mode
   calibrationPoints: CalibrationPoint[];
   activeCalibrationLine: CalibrationLine | null;
   currentCalibrationLine: { startPoint: CalibrationPoint | null; endPoint: CalibrationPoint | null } | null;
   pixelsPerFoot: number;
+
+  // Ruler/measurement settings
+  measurementLines: MeasurementLine[];
+  currentMeasurementLine: { startPoint: MeasurementPoint | null; endPoint: MeasurementPoint | null } | null;
+  showMeasurementLines: boolean;
+  selectedMeasurementId: string | null;
+
+  // Drag state for moving measurement points
+  isDragging: boolean;
+  dragTarget: { lineId: string; pointType: 'start' | 'end' } | null;
 
   // Grid settings
   showGrid: boolean;
@@ -54,7 +80,22 @@ interface MapState {
   
   // Pan/move actions
   setIsPanningMode: (isPanning: boolean) => void;
-  
+
+  // Ruler/measurement actions
+  toggleRulerMode: () => void;
+  startMeasurementLine: (point: MeasurementPoint) => void;
+  completeMeasurementLine: (endPoint: MeasurementPoint) => void;
+  clearMeasurementLines: () => void;
+  removeMeasurementLine: (id: string) => void;
+  toggleMeasurementLines: () => void;
+  selectMeasurementLine: (id: string | null) => void;
+  updateMeasurementLine: (id: string, updates: Partial<MeasurementLine>) => void;
+
+  // Drag actions for moving measurement points
+  startDragging: (lineId: string, pointType: 'start' | 'end') => void;
+  updateDragging: (x: number, y: number) => void;
+  stopDragging: () => void;
+
   // Zoom actions
   zoomIn: () => void;
   zoomOut: () => void;
@@ -70,10 +111,21 @@ export const useMapStore = create<MapState>((set, get) => ({
 
   isCalibrationMode: false,
   isPanningMode: false,
+  isRulerMode: false,
   calibrationPoints: [],
   activeCalibrationLine: null,
   currentCalibrationLine: null,
   pixelsPerFoot: 1,
+
+  // Ruler/measurement settings
+  measurementLines: [],
+  currentMeasurementLine: null,
+  showMeasurementLines: true,
+  selectedMeasurementId: null,
+
+  // Drag state
+  isDragging: false,
+  dragTarget: null,
 
   // Grid settings
   showGrid: true,
@@ -161,7 +213,107 @@ export const useMapStore = create<MapState>((set, get) => ({
   
   // Pan/move actions
   setIsPanningMode: (isPanning) => set({ isPanningMode: isPanning }),
-  
+
+  // Ruler/measurement actions
+  toggleRulerMode: () => set((state) => ({
+    isRulerMode: !state.isRulerMode,
+    currentMeasurementLine: null // Reset current line when toggling mode
+  })),
+
+  startMeasurementLine: (point) => set({
+    currentMeasurementLine: { startPoint: point, endPoint: null }
+  }),
+
+  completeMeasurementLine: (endPoint) => {
+    const state = get();
+    if (!state.currentMeasurementLine?.startPoint) return;
+
+    const pixelDistance = CalibrationService.calculatePixelDistance(
+      state.currentMeasurementLine.startPoint,
+      endPoint
+    );
+
+    const realWorldDistance = CalibrationService.pixelsToFeet(pixelDistance, state.pixelsPerFoot);
+
+    const measurementLine: MeasurementLine = {
+      id: `measurement-${Date.now()}`,
+      startPoint: state.currentMeasurementLine.startPoint,
+      endPoint,
+      pixelDistance,
+      realWorldDistance
+    };
+
+    set((state) => ({
+      measurementLines: [...state.measurementLines, measurementLine],
+      currentMeasurementLine: null
+    }));
+  },
+
+  clearMeasurementLines: () => set({ measurementLines: [], selectedMeasurementId: null }),
+
+  removeMeasurementLine: (id) => set((state) => ({
+    measurementLines: state.measurementLines.filter(line => line.id !== id),
+    selectedMeasurementId: state.selectedMeasurementId === id ? null : state.selectedMeasurementId
+  })),
+
+  toggleMeasurementLines: () => set((state) => ({ showMeasurementLines: !state.showMeasurementLines })),
+
+  selectMeasurementLine: (id) => set({ selectedMeasurementId: id }),
+
+  updateMeasurementLine: (id, updates) => set((state) => ({
+    measurementLines: state.measurementLines.map(line =>
+      line.id === id ? { ...line, ...updates } : line
+    )
+  })),
+
+  // Drag actions for moving measurement points
+  startDragging: (lineId, pointType) => set({
+    isDragging: true,
+    dragTarget: { lineId, pointType }
+  }),
+
+  updateDragging: (x, y) => {
+    const state = get();
+    if (!state.isDragging || !state.dragTarget) return;
+
+    const { lineId, pointType } = state.dragTarget;
+    const line = state.measurementLines.find(l => l.id === lineId);
+    if (!line) return;
+
+    // Update the appropriate point
+    const updates: Partial<MeasurementLine> = {};
+    if (pointType === 'start') {
+      updates.startPoint = { ...line.startPoint, x, y };
+    } else {
+      updates.endPoint = { ...line.endPoint, x, y };
+    }
+
+    // Recalculate distances
+    const newStartPoint = updates.startPoint || line.startPoint;
+    const newEndPoint = updates.endPoint || line.endPoint;
+
+    // Import CalibrationService for distance calculations
+    const pixelDistance = Math.sqrt(
+      Math.pow(newEndPoint.x - newStartPoint.x, 2) +
+      Math.pow(newEndPoint.y - newStartPoint.y, 2)
+    );
+
+    updates.pixelDistance = pixelDistance;
+    updates.realWorldDistance = pixelDistance / state.pixelsPerFoot;
+
+    // Apply updates
+    set((state) => ({
+      measurementLines: state.measurementLines.map(line =>
+        line.id === lineId ? { ...line, ...updates } : line
+      )
+    }));
+  },
+
+  stopDragging: () => set({
+    isDragging: false,
+    dragTarget: null
+  }),
+
   // Zoom actions
   zoomIn: () => set((state) => ({ scale: Math.min(5, state.scale * 1.2) })),
   zoomOut: () => set((state) => ({ scale: Math.max(0.1, state.scale / 1.2) })),

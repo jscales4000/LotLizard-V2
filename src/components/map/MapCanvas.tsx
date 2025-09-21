@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import { useMapStore } from '../../stores/mapStore';
+import { useMapStore, MeasurementLine } from '../../stores/mapStore';
 import { useEquipmentStore } from '../../stores/equipmentStore';
 import { CalibrationService } from '../../services/calibrationService';
 import CalibrationDialog from '../calibration/CalibrationDialog';
@@ -11,13 +11,14 @@ const MapCanvas: React.FC = () => {
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
   // Get state from stores
-  const { 
-    scale, 
-    position, 
-    setPosition, 
-    imageUrl, 
+  const {
+    scale,
+    position,
+    setPosition,
+    imageUrl,
     isCalibrationMode,
     isPanningMode,
+    isRulerMode,
     activeCalibrationLine,
     currentCalibrationLine,
     startCalibrationLine,
@@ -30,7 +31,21 @@ const MapCanvas: React.FC = () => {
     gridColor,
     gridOpacity,
     showEquipmentLabels,
-    showClearanceZones
+    showClearanceZones,
+    measurementLines,
+    currentMeasurementLine,
+    startMeasurementLine,
+    completeMeasurementLine,
+    showMeasurementLines,
+    selectedMeasurementId,
+    selectMeasurementLine,
+    removeMeasurementLine,
+    updateMeasurementLine,
+    isDragging,
+    dragTarget,
+    startDragging,
+    updateDragging,
+    stopDragging
   } = useMapStore();
   
   const { 
@@ -193,13 +208,92 @@ const MapCanvas: React.FC = () => {
     return null;
   };
 
+  // Helper function to detect measurement line clicks
+  const getMeasurementLineAtPoint = (x: number, y: number): MeasurementLine | null => {
+    const tolerance = 10; // Click tolerance in pixels
+
+    for (const line of measurementLines) {
+      // Check if click is near the line
+      const lineLength = Math.sqrt(
+        Math.pow(line.endPoint.x - line.startPoint.x, 2) +
+        Math.pow(line.endPoint.y - line.startPoint.y, 2)
+      );
+
+      if (lineLength === 0) continue;
+
+      // Calculate distance from point to line
+      const A = x - line.startPoint.x;
+      const B = y - line.startPoint.y;
+      const C = line.endPoint.x - line.startPoint.x;
+      const D = line.endPoint.y - line.startPoint.y;
+
+      const dot = A * C + B * D;
+      const lenSq = C * C + D * D;
+      let param = -1;
+
+      if (lenSq !== 0) {
+        param = dot / lenSq;
+      }
+
+      let xx, yy;
+
+      if (param < 0) {
+        xx = line.startPoint.x;
+        yy = line.startPoint.y;
+      } else if (param > 1) {
+        xx = line.endPoint.x;
+        yy = line.endPoint.y;
+      } else {
+        xx = line.startPoint.x + param * C;
+        yy = line.startPoint.y + param * D;
+      }
+
+      const dx = x - xx;
+      const dy = y - yy;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= tolerance / scale) {
+        return line;
+      }
+    }
+
+    return null;
+  };
+
+  // Helper function to detect measurement point clicks (for dragging)
+  const getMeasurementPointAtPoint = (x: number, y: number): { line: MeasurementLine; pointType: 'start' | 'end' } | null => {
+    const tolerance = 12; // Click tolerance in pixels (slightly larger for points)
+
+    for (const line of measurementLines) {
+      // Check start point
+      const startDist = Math.sqrt(
+        Math.pow(x - line.startPoint.x, 2) +
+        Math.pow(y - line.startPoint.y, 2)
+      );
+      if (startDist <= tolerance / scale) {
+        return { line, pointType: 'start' };
+      }
+
+      // Check end point
+      const endDist = Math.sqrt(
+        Math.pow(x - line.endPoint.x, 2) +
+        Math.pow(y - line.endPoint.y, 2)
+      );
+      if (endDist <= tolerance / scale) {
+        return { line, pointType: 'end' };
+      }
+    }
+
+    return null;
+  };
+
   // Event handlers
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(event);
     
     if (isCalibrationMode) {
       const point = { id: `point-${Date.now()}`, x, y };
-      
+
       if (!currentCalibrationLine?.startPoint) {
         startCalibrationLine(point);
       } else {
@@ -207,7 +301,28 @@ const MapCanvas: React.FC = () => {
         setPendingCalibrationData({ endPoint: point, pixelDistance });
         setCalibrationDialogOpen(true);
       }
+    } else if (isRulerMode) {
+      const point = { id: `point-${Date.now()}`, x, y };
+
+      if (!currentMeasurementLine?.startPoint) {
+        startMeasurementLine(point);
+      } else {
+        completeMeasurementLine(point);
+      }
     } else {
+      // Check for measurement line selection first (before equipment)
+      const clickedMeasurementLine = getMeasurementLineAtPoint(x, y);
+      if (clickedMeasurementLine) {
+        selectMeasurementLine(
+          selectedMeasurementId === clickedMeasurementLine.id ? null : clickedMeasurementLine.id
+        );
+        return;
+      }
+
+      // Clear measurement selection if clicking elsewhere
+      if (selectedMeasurementId) {
+        selectMeasurementLine(null);
+      }
       const clickedEquipment = getEquipmentAtPoint(x, y);
       
       if (clickedEquipment) {
@@ -234,6 +349,8 @@ const MapCanvas: React.FC = () => {
                   
                   drawActiveCalibrationLine(ctx);
                   drawCurrentCalibrationLine(ctx);
+                  drawMeasurementLines(ctx);
+                  drawCurrentMeasurementLine(ctx);
                   drawEquipmentItems(ctx);
                   
                   ctx.restore();
@@ -265,6 +382,8 @@ const MapCanvas: React.FC = () => {
                   
                   drawActiveCalibrationLine(ctx);
                   drawCurrentCalibrationLine(ctx);
+                  drawMeasurementLines(ctx);
+                  drawCurrentMeasurementLine(ctx);
                   drawEquipmentItems(ctx);
                   
                   ctx.restore();
@@ -361,6 +480,18 @@ const MapCanvas: React.FC = () => {
         y: y - clickedItem.y
       });
     } else {
+      // Check if clicked on a measurement point for dragging
+      const measurementPoint = getMeasurementPointAtPoint(x, y);
+      if (measurementPoint && isRulerMode) {
+        // Start dragging measurement point
+        startDragging(measurementPoint.line.id, measurementPoint.pointType);
+        // Select the measurement line if not already selected
+        if (selectedMeasurementId !== measurementPoint.line.id) {
+          selectMeasurementLine(measurementPoint.line.id);
+        }
+        return;
+      }
+
       // If clicked empty space, deselect all
       deselectAll();
       
@@ -418,14 +549,23 @@ const MapCanvas: React.FC = () => {
         setIsRotatingEquipment(false);
         setRotationItem(null);
       }
+      if (isDragging) {
+        stopDragging();
+      }
     }
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isCalibrationMode) return;
-    
+
     const { x, y } = getCanvasCoordinates(event);
-    
+
+    // Handle measurement point dragging
+    if (isDragging && dragTarget) {
+      updateDragging(x, y);
+      return; // Don't process other mouse move events while dragging
+    }
+
     // Update cursor for pan mode when not actively panning
     if (isPanningMode && !isPanning) {
       const canvas = canvasRef.current;
@@ -651,9 +791,13 @@ const MapCanvas: React.FC = () => {
     
     const midX = (activeCalibrationLine.startPoint.x + activeCalibrationLine.endPoint.x) / 2;
     const midY = (activeCalibrationLine.startPoint.y + activeCalibrationLine.endPoint.y) / 2;
-    
+
+    // Background for text
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.8)'; // Green background to match calibration color
+    ctx.fillRect(midX - 12, midY - 14, 24, 8);
+
     ctx.fillStyle = '#ffffff';
-    ctx.font = '14px Arial';
+    ctx.font = '6px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(
       CalibrationService.formatDistance(activeCalibrationLine.realWorldDistance),
@@ -679,6 +823,84 @@ const MapCanvas: React.FC = () => {
       currentCalibrationLine.startPoint.y - 15
     );
   }, [currentCalibrationLine]);
+
+  const drawMeasurementLines = React.useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!showMeasurementLines) return;
+
+    measurementLines.forEach(line => {
+      const isSelected = selectedMeasurementId === line.id;
+
+      // Draw measurement line with selection highlight
+      ctx.strokeStyle = isSelected ? '#ff0000' : '#ff6b35';
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(line.startPoint.x, line.startPoint.y);
+      ctx.lineTo(line.endPoint.x, line.endPoint.y);
+      ctx.stroke();
+
+      // Draw measurement points with selection highlight and ruler mode feedback
+      // Match calibration tool sizing: normal=1.5, active=2
+      const pointRadius = isSelected ? 2 : 1.5;
+      const pointColor = isSelected ? '#ff0000' : '#ff6b35';
+
+      // Add white border to points when in ruler mode to indicate they're draggable
+      if (isRulerMode) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(line.startPoint.x, line.startPoint.y, pointRadius + 0.5, 0, 2 * Math.PI);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(line.endPoint.x, line.endPoint.y, pointRadius + 0.5, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = pointColor;
+      ctx.beginPath();
+      ctx.arc(line.startPoint.x, line.startPoint.y, pointRadius, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(line.endPoint.x, line.endPoint.y, pointRadius, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Draw measurement label with selection highlight
+      const midX = (line.startPoint.x + line.endPoint.x) / 2;
+      const midY = (line.startPoint.y + line.endPoint.y) / 2;
+
+      // Background for text
+      ctx.fillStyle = isSelected ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 107, 53, 0.8)';
+      ctx.fillRect(midX - 12, midY - 9, 24, 8);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '6px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        CalibrationService.formatDistance(line.realWorldDistance),
+        midX,
+        midY - 4
+      );
+    });
+  }, [measurementLines, showMeasurementLines, selectedMeasurementId, isRulerMode]);
+
+  const drawCurrentMeasurementLine = React.useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!currentMeasurementLine?.startPoint) return;
+
+    ctx.fillStyle = '#ff6b35';
+    ctx.beginPath();
+    ctx.arc(currentMeasurementLine.startPoint.x, currentMeasurementLine.startPoint.y, 1.5, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      'Start Point',
+      currentMeasurementLine.startPoint.x,
+      currentMeasurementLine.startPoint.y - 15
+    );
+  }, [currentMeasurementLine]);
 
   // For hover popup functionality
   const [hoverItem, setHoverItem] = useState<string | null>(null);
@@ -869,6 +1091,8 @@ const MapCanvas: React.FC = () => {
     
     drawActiveCalibrationLine(ctx);
     drawCurrentCalibrationLine(ctx);
+    drawMeasurementLines(ctx);
+    drawCurrentMeasurementLine(ctx);
     drawEquipmentItems(ctx);
     
     ctx.restore();
@@ -985,9 +1209,13 @@ const MapCanvas: React.FC = () => {
         return;
       }
       
-      // Delete key to remove selected equipment
+      // Delete key to remove selected equipment or measurement lines
       if (event.key === 'Delete' || event.key === 'Backspace') {
-        removeSelectedItems();
+        if (selectedMeasurementId) {
+          removeMeasurementLine(selectedMeasurementId);
+        } else {
+          removeSelectedItems();
+        }
         return;
       }
       
@@ -1179,7 +1407,7 @@ const MapCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawEquipmentItems, drawGrid, loadedImage]);
+  }, [equipmentItems, position, scale, setScale, moveSelectedItems, selectItem, deselectAll, selectAll, removeSelectedItems, copySelectedItems, pasteItems, getSelectedItems, isPanningMode, drawActiveCalibrationLine, drawCurrentCalibrationLine, drawMeasurementLines, drawCurrentMeasurementLine, drawEquipmentItems, drawGrid, loadedImage, selectedMeasurementId, removeMeasurementLine]);
 
   return (
     <Box 
@@ -1200,8 +1428,8 @@ const MapCanvas: React.FC = () => {
           width: '100%',
           height: '100%',
           display: 'block',
-          cursor: isCalibrationMode ? 'crosshair' : 
-                  isDraggingEquipment ? 'grabbing' : 
+          cursor: isCalibrationMode || isRulerMode ? 'crosshair' :
+                  isDraggingEquipment ? 'grabbing' :
                   isPanning ? 'grabbing' : 'default'
         }}
         onClick={handleCanvasClick}
@@ -1302,7 +1530,26 @@ const MapCanvas: React.FC = () => {
           📏 Calibration Mode: {currentCalibrationLine?.startPoint ? 'Click to set end point' : 'Click to set start point'}
         </Box>
       )}
-      
+
+      {isRulerMode && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            bgcolor: 'rgba(33, 150, 243, 0.9)',
+            color: 'white',
+            p: 1,
+            borderRadius: 1,
+            fontSize: '0.875rem',
+            fontWeight: 'bold'
+          }}
+        >
+          📐 Ruler Mode: {currentMeasurementLine?.startPoint ? 'Click to set end point' : 'Click to set start point'}
+        </Box>
+      )}
+
       <CalibrationDialog
         open={calibrationDialogOpen}
         onClose={handleCalibrationDialogClose}
