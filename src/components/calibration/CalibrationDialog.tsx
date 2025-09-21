@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
-import { CalibrationService } from '../../services/calibrationService';
 
 interface CalibrationDialogProps {
   open: boolean;

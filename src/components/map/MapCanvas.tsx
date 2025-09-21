@@ -40,7 +40,6 @@ const MapCanvas: React.FC = () => {
     selectedMeasurementId,
     selectMeasurementLine,
     removeMeasurementLine,
-    updateMeasurementLine,
     isDragging,
     dragTarget,
     startDragging,
